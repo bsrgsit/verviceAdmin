@@ -12,7 +12,28 @@ export async function GET() {
     }
 
     const snapshot = await getDb().collection('communities').get();
-    let communities = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    let communities = await Promise.all(
+      snapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        let neighborCount = 0;
+        if (data.name) {
+          try {
+            const countSnap = await getDb().collection('users')
+              .where('community', '==', data.name)
+              .count()
+              .get();
+            neighborCount = countSnap.data().count;
+          } catch (e) {
+            console.error(`Failed to count users for community ${data.name}:`, e);
+          }
+        }
+        return {
+          id: doc.id,
+          ...data,
+          neighborCount,
+        };
+      })
+    );
 
     if (!enforceSuperAdmin(admin)) {
       communities = communities.filter((c: any) => admin.assignedCommunities.includes(c.name));
