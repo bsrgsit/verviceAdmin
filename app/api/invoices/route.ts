@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
 import { writeAuditLog } from '@/lib/admin-check';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const snapshot = await getDb().collection('invoices')
       .orderBy('createdAt', 'desc')
       .get();
+
+    const userPromises = new Map<string, Promise<{ name: string; phoneNumber: string }>>();
 
     const invoices = await Promise.all(
       snapshot.docs.map(async (doc) => {
@@ -15,12 +19,23 @@ export async function GET() {
         let userPhone = '';
 
         if (data.userId) {
-          const userDoc = await getDb().collection('users').doc(data.userId).get();
-          if (userDoc.exists) {
-            const userData = userDoc.data();
-            userName = userData?.name || 'Unknown';
-            userPhone = userData?.phoneNumber || '';
+          if (!userPromises.has(data.userId)) {
+            const promise = (async () => {
+              const userDoc = await getDb().collection('users').doc(data.userId).get();
+              if (userDoc.exists) {
+                const userData = userDoc.data();
+                return {
+                  name: userData?.name || 'Unknown',
+                  phoneNumber: userData?.phoneNumber || '',
+                };
+              }
+              return { name: 'Unknown', phoneNumber: '' };
+            })();
+            userPromises.set(data.userId, promise);
           }
+          const userInfo = await userPromises.get(data.userId)!;
+          userName = userInfo.name;
+          userPhone = userInfo.phoneNumber;
         }
 
         return {

@@ -32,12 +32,46 @@ export async function PATCH(
 
     await db.collection('invoices').doc(invoiceId).update(updates);
 
-    // If status changed to paid, update booking dates if needed
+    // If status changed to paid, update booking dates and record/verify payment
     if (body.status === 'paid' && currentData?.status !== 'paid') {
       const now = Date.now();
       await db.collection('invoices').doc(invoiceId).update({
         paidAt: now,
       });
+
+      // 1. Create or update payment document in 'payments' collection
+      try {
+        const paymentsQuery = await db.collection('payments')
+          .where('invoiceId', '==', invoiceId)
+          .limit(1)
+          .get();
+
+        if (!paymentsQuery.empty) {
+          const paymentDocId = paymentsQuery.docs[0].id;
+          await db.collection('payments').doc(paymentDocId).update({
+            status: 'verified',
+            adminVerified: true,
+            adminVerifiedAt: now,
+            adminNotes: 'Marked as paid via Invoice Manager update',
+          });
+        } else {
+          await db.collection('payments').add({
+            userId: currentData?.userId || '',
+            bookingId: currentData?.subscriptionId || '',
+            invoiceId: invoiceId,
+            amount: Number(body.amount ?? currentData?.amount ?? 0),
+            upiAppName: 'Invoice Payment',
+            upiTransactionId: currentData?.paymentTransactionId || '',
+            status: 'verified',
+            adminVerified: true,
+            adminVerifiedAt: now,
+            adminNotes: 'Marked as paid via Invoice Manager update',
+            createdAt: now,
+          });
+        }
+      } catch (err) {
+        console.error('Error syncing payment for invoice:', err);
+      }
 
       if (currentData?.subscriptionId) {
         // Find if this is the latest invoice for the subscription
@@ -54,10 +88,59 @@ export async function PATCH(
           ? new Date(new Date(latestCycleEnd).getFullYear(), new Date(latestCycleEnd).getMonth() + 1, 5).getTime()
           : now + 30 * 24 * 60 * 60 * 1000;
 
-        await db.collection('bookings').doc(currentData.subscriptionId).update({
+        await db.collection('bookings').doc(currentData?.subscriptionId || '').update({
           paymentStatus: 'paid',
           lastPaymentDate: now,
           paymentDueDate: nextDueDate,
+        });
+
+        // 2. Update booking payment history
+        try {
+          const bookingDoc = await db.collection('bookings').doc(currentData?.subscriptionId || '').get();
+          if (bookingDoc.exists) {
+            const bookingData = bookingDoc.data();
+            const paymentHistory = bookingData?.paymentHistory || [];
+            paymentHistory.push({
+              cycle: paymentHistory.length + 1,
+              amount: Number(body.amount ?? currentData?.amount ?? 0),
+              dueDate: nextDueDate,
+              status: 'paid',
+              paidAt: now,
+              transactionId: currentData?.paymentTransactionId || '',
+            });
+            await db.collection('bookings').doc(currentData?.subscriptionId || '').update({
+              paymentHistory,
+            });
+          }
+        } catch (err) {
+          console.error('Error updating booking payment history:', err);
+        }
+      }
+    }
+
+    // If status changed from paid to something else
+    if (body.status && body.status !== 'paid' && currentData?.status === 'paid') {
+      try {
+        const paymentsQuery = await db.collection('payments')
+          .where('invoiceId', '==', invoiceId)
+          .limit(1)
+          .get();
+
+        if (!paymentsQuery.empty) {
+          const paymentDocId = paymentsQuery.docs[0].id;
+          await db.collection('payments').doc(paymentDocId).update({
+            status: 'pending_manual_verify',
+            adminVerified: false,
+            adminVerifiedAt: 0,
+          });
+        }
+      } catch (err) {
+        console.error('Error reverting payment for invoice:', err);
+      }
+
+      if (currentData?.subscriptionId) {
+        await db.collection('bookings').doc(currentData.subscriptionId).update({
+          paymentStatus: 'pending',
         });
       }
     }
