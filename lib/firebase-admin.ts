@@ -19,7 +19,24 @@ function ensureInitialized() {
     // Convert escaped newlines back to actual newlines
     privateKey = privateKey.replace(/\\n/g, '\n');
 
-    console.log('Firebase Key Debug:', {
+    // Reconstruct PEM formatting robustly to fix missing newlines from copy-paste
+    const header = '-----BEGIN PRIVATE KEY-----';
+    const footer = '-----END PRIVATE KEY-----';
+    
+    let base64Body = privateKey;
+    if (base64Body.includes(header)) {
+      base64Body = base64Body.replace(header, '');
+    }
+    if (base64Body.includes(footer)) {
+      base64Body = base64Body.replace(footer, '');
+    }
+    // Remove all whitespace/newlines from the base64 body
+    base64Body = base64Body.replace(/\s+/g, '');
+    
+    // Reassemble key with correct headers and newlines
+    privateKey = `${header}\n${base64Body}\n${footer}\n`;
+
+    console.log('Firebase Key Debug (Normalized):', {
       length: privateKey.length,
       startsWithBegin: privateKey.startsWith('-----BEGIN PRIVATE KEY-----'),
       indexOfBegin: privateKey.indexOf('-----BEGIN PRIVATE KEY-----'),
