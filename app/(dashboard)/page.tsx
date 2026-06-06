@@ -46,9 +46,9 @@ export default function DashboardPage() {
       fetch('/api/dashboard/pending').then((r) => r.json()),
     ])
       .then(([statsData, activityData, pendingData]) => {
-        setStats(statsData);
-        setRecentActivity(activityData);
-        setPendingPayments(pendingData);
+        setStats(statsData?.error ? null : statsData);
+        setRecentActivity(Array.isArray(activityData) ? activityData : []);
+        setPendingPayments(Array.isArray(pendingData) ? pendingData : []);
       })
       .finally(() => setLoading(false));
   }, []);
