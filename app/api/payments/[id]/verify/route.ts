@@ -27,12 +27,38 @@ export async function POST(
       status: 'verified',
     });
 
+    // Update invoice
+    let billingCycleEnd = now;
+    if (paymentData.invoiceId) {
+      const invoiceDoc = await getDb().collection('invoices').doc(paymentData.invoiceId).get();
+      if (invoiceDoc.exists) {
+        const invoiceData = invoiceDoc.data();
+        if (invoiceData?.billingCycleEnd) {
+          billingCycleEnd = invoiceData.billingCycleEnd;
+        }
+      }
+
+      await getDb().collection('invoices').doc(paymentData.invoiceId).update({
+        status: 'paid',
+        paidAt: now,
+        paymentTransactionId: paymentData.upiTransactionId,
+      });
+    }
+
     // Update booking payment status
     if (paymentData.bookingId) {
+      const billingEndDate = new Date(billingCycleEnd);
+      const nextDueDate = new Date(
+        billingEndDate.getFullYear(),
+        billingEndDate.getMonth() + 1,
+        5,
+        23, 59, 59, 999
+      ).getTime();
+
       await getDb().collection('bookings').doc(paymentData.bookingId).update({
         paymentStatus: 'paid',
         lastPaymentDate: now,
-        paymentDueDate: now + 30 * 24 * 60 * 60 * 1000,
+        paymentDueDate: nextDueDate,
       });
 
       // Update payment history
@@ -42,22 +68,13 @@ export async function POST(
       paymentHistory.push({
         cycle: paymentHistory.length + 1,
         amount: paymentData.amount,
-        dueDate: now + 30 * 24 * 60 * 60 * 1000,
+        dueDate: nextDueDate,
         status: 'paid',
         paidAt: now,
         transactionId: paymentData.upiTransactionId,
       });
       await getDb().collection('bookings').doc(paymentData.bookingId).update({
         paymentHistory,
-      });
-    }
-
-    // Update invoice
-    if (paymentData.invoiceId) {
-      await getDb().collection('invoices').doc(paymentData.invoiceId).update({
-        status: 'paid',
-        paidAt: now,
-        paymentTransactionId: paymentData.upiTransactionId,
       });
     }
 

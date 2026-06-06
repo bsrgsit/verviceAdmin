@@ -10,11 +10,13 @@ import {
   Building2,
   History,
   Car,
+  Receipt,
 } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/payments', label: 'Payments', icon: CreditCard },
+  { href: '/invoices', label: 'Invoices', icon: Receipt },
   { href: '/bookings', label: 'Bookings', icon: FileText },
   { href: '/users', label: 'Users', icon: Users },
   { href: '/communities', label: 'Communities', icon: Building2 },

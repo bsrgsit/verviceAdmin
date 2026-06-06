@@ -19,10 +19,35 @@ export async function POST(
       return NextResponse.json({ error: 'Payment data not found' }, { status: 404 });
     }
 
-    await getDb().collection('payments').doc(paymentId).update({
+    const db = getDb();
+    await db.collection('payments').doc(paymentId).update({
       status: 'rejected',
       adminNotes: 'Rejected by admin',
     });
+
+    // Revert invoice and booking status
+    if (paymentData.invoiceId) {
+      const invoiceDoc = await db.collection('invoices').doc(paymentData.invoiceId).get();
+      if (invoiceDoc.exists) {
+        const invoiceData = invoiceDoc.data();
+        const dueDate = invoiceData?.dueDate || 0;
+        const now = Date.now();
+        const newStatus = (dueDate > 0 && dueDate < now) ? 'overdue' : 'pending';
+
+        await db.collection('invoices').doc(paymentData.invoiceId).update({
+          status: newStatus,
+          paidAt: 0,
+          paymentTransactionId: '',
+        });
+
+        // Revert booking paymentStatus
+        if (paymentData.bookingId) {
+          await db.collection('bookings').doc(paymentData.bookingId).update({
+            paymentStatus: newStatus === 'overdue' ? 'overdue' : 'unpaid',
+          });
+        }
+      }
+    }
 
     await writeAuditLog(
       'admin',
