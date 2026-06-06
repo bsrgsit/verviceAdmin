@@ -46,119 +46,168 @@ export async function PATCH(
 
     await db.collection('invoices').doc(invoiceId).update(updates);
 
-    // If status changed to paid, update booking dates and record/verify payment
-    if (body.status === 'paid' && currentData?.status !== 'paid') {
+    // If status changed, synchronize with payment document and booking
+    if (body.status !== undefined && body.status !== currentData?.status) {
       const now = Date.now();
-      await db.collection('invoices').doc(invoiceId).update({
-        paidAt: now,
-      });
+      const dueDate = body.dueDate ?? currentData?.dueDate ?? 0;
+      const isOverdue = dueDate > 0 && dueDate < now;
 
-      // Create or update payment document in 'payments' collection
-      try {
-        const paymentsQuery = await db.collection('payments')
-          .where('invoiceId', '==', invoiceId)
-          .limit(1)
-          .get();
-
-        if (!paymentsQuery.empty) {
-          const paymentDocId = paymentsQuery.docs[0].id;
-          await db.collection('payments').doc(paymentDocId).update({
-            status: 'verified',
-            adminVerified: true,
-            adminVerifiedAt: now,
-            adminNotes: 'Marked as paid via Invoice Manager update',
-          });
-        } else {
-          await db.collection('payments').add({
-            userId: currentData?.userId || '',
-            bookingId: currentData?.subscriptionId || '',
-            invoiceId: invoiceId,
-            amount: Number(body.amount ?? currentData?.amount ?? 0),
-            upiAppName: 'Invoice Payment',
-            upiTransactionId: currentData?.paymentTransactionId || '',
-            status: 'verified',
-            adminVerified: true,
-            adminVerifiedAt: now,
-            adminNotes: 'Marked as paid via Invoice Manager update',
-            createdAt: now,
-          });
-        }
-      } catch (err) {
-        console.error('Error syncing payment for invoice:', err);
-      }
-
-      if (currentData?.subscriptionId) {
-        // Find if this is the latest invoice for the subscription
-        const allInvoices = await db.collection('invoices')
-          .where('subscriptionId', '==', currentData.subscriptionId)
-          .get();
-        
-        const invoicesList = allInvoices.docs.map(doc => doc.data());
-        const latestCycleEnd = invoicesList.reduce((max, inv) => 
-          inv.billingCycleEnd > max ? inv.billingCycleEnd : max
-        , 0);
-
-        const nextDueDate = latestCycleEnd > 0 
-          ? new Date(new Date(latestCycleEnd).getFullYear(), new Date(latestCycleEnd).getMonth() + 1, 5).getTime()
-          : now + 30 * 24 * 60 * 60 * 1000;
-
-        await db.collection('bookings').doc(currentData?.subscriptionId || '').update({
-          paymentStatus: 'paid',
-          lastPaymentDate: now,
-          paymentDueDate: nextDueDate,
+      if (body.status === 'paid') {
+        await db.collection('invoices').doc(invoiceId).update({
+          paidAt: now,
         });
 
-        // Update booking payment history
+        // Create or update payment document in 'payments' collection
         try {
-          const bookingDoc = await db.collection('bookings').doc(currentData?.subscriptionId || '').get();
-          if (bookingDoc.exists) {
-            const bookingData = bookingDoc.data();
-            const paymentHistory = bookingData?.paymentHistory || [];
-            
-            // centralize buildPaymentHistoryEntry (Issue 8)
-            const newEntry = buildPaymentHistoryEntry(
-              paymentHistory.length,
-              Number(body.amount ?? currentData?.amount ?? 0),
-              nextDueDate,
-              now,
-              currentData?.paymentTransactionId || ''
-            );
-            paymentHistory.push(newEntry);
+          const paymentsQuery = await db.collection('payments')
+            .where('invoiceId', '==', invoiceId)
+            .limit(1)
+            .get();
 
-            await db.collection('bookings').doc(currentData?.subscriptionId || '').update({
-              paymentHistory,
+          if (!paymentsQuery.empty) {
+            const paymentDocId = paymentsQuery.docs[0].id;
+            await db.collection('payments').doc(paymentDocId).update({
+              status: 'verified',
+              adminVerified: true,
+              adminVerifiedAt: now,
+              adminNotes: 'Marked as paid via Invoice Manager update',
+            });
+          } else {
+            await db.collection('payments').add({
+              userId: currentData?.userId || '',
+              bookingId: currentData?.subscriptionId || '',
+              invoiceId: invoiceId,
+              amount: Number(body.amount ?? currentData?.amount ?? 0),
+              upiAppName: 'Invoice Payment',
+              upiTransactionId: currentData?.paymentTransactionId || '',
+              status: 'verified',
+              adminVerified: true,
+              adminVerifiedAt: now,
+              adminNotes: 'Marked as paid via Invoice Manager update',
+              createdAt: now,
             });
           }
         } catch (err) {
-          console.error('Error updating booking payment history:', err);
+          console.error('Error syncing payment for invoice:', err);
         }
-      }
-    }
 
-    // If status changed from paid to something else
-    if (body.status && body.status !== 'paid' && currentData?.status === 'paid') {
-      try {
-        const paymentsQuery = await db.collection('payments')
-          .where('invoiceId', '==', invoiceId)
-          .limit(1)
-          .get();
+        if (currentData?.subscriptionId) {
+          // Find if this is the latest invoice for the subscription
+          const allInvoices = await db.collection('invoices')
+            .where('subscriptionId', '==', currentData.subscriptionId)
+            .get();
+          
+          const invoicesList = allInvoices.docs.map(doc => doc.data());
+          const latestCycleEnd = invoicesList.reduce((max, inv) => 
+            inv.billingCycleEnd > max ? inv.billingCycleEnd : max
+          , 0);
 
-        if (!paymentsQuery.empty) {
-          const paymentDocId = paymentsQuery.docs[0].id;
-          await db.collection('payments').doc(paymentDocId).update({
-            status: 'pending_manual_verify',
-            adminVerified: false,
-            adminVerifiedAt: 0,
+          const nextDueDate = latestCycleEnd > 0 
+            ? new Date(new Date(latestCycleEnd).getFullYear(), new Date(latestCycleEnd).getMonth() + 1, 5).getTime()
+            : now + 30 * 24 * 60 * 60 * 1000;
+
+          await db.collection('bookings').doc(currentData.subscriptionId).update({
+            paymentStatus: 'paid',
+            lastPaymentDate: now,
+            paymentDueDate: nextDueDate,
+          });
+
+          // Update booking payment history
+          try {
+            const bookingDoc = await db.collection('bookings').doc(currentData.subscriptionId).get();
+            if (bookingDoc.exists) {
+              const bookingData = bookingDoc.data();
+              const paymentHistory = bookingData?.paymentHistory || [];
+              
+              const newEntry = buildPaymentHistoryEntry(
+                paymentHistory.length,
+                Number(body.amount ?? currentData?.amount ?? 0),
+                nextDueDate,
+                now,
+                currentData?.paymentTransactionId || ''
+              );
+              paymentHistory.push(newEntry);
+
+              await db.collection('bookings').doc(currentData.subscriptionId).update({
+                paymentHistory,
+              });
+            }
+          } catch (err) {
+            console.error('Error updating booking payment history:', err);
+          }
+        }
+      } else if (body.status === 'pending_verification') {
+        await db.collection('invoices').doc(invoiceId).update({
+          paidAt: 0,
+        });
+
+        // Create or update payment document to pending verification
+        try {
+          const paymentsQuery = await db.collection('payments')
+            .where('invoiceId', '==', invoiceId)
+            .limit(1)
+            .get();
+
+          if (!paymentsQuery.empty) {
+            const paymentDocId = paymentsQuery.docs[0].id;
+            await db.collection('payments').doc(paymentDocId).update({
+              status: 'pending_manual_verify',
+              adminVerified: false,
+              adminVerifiedAt: 0,
+            });
+          } else {
+            await db.collection('payments').add({
+              userId: currentData?.userId || '',
+              bookingId: currentData?.subscriptionId || '',
+              invoiceId: invoiceId,
+              amount: Number(body.amount ?? currentData?.amount ?? 0),
+              upiAppName: 'Invoice Payment',
+              upiTransactionId: currentData?.paymentTransactionId || '',
+              status: 'pending_manual_verify',
+              adminVerified: false,
+              adminVerifiedAt: 0,
+              adminNotes: 'Status set to pending verification via Invoice Manager update',
+              createdAt: now,
+            });
+          }
+        } catch (err) {
+          console.error('Error syncing payment for invoice:', err);
+        }
+
+        if (currentData?.subscriptionId) {
+          await db.collection('bookings').doc(currentData.subscriptionId).update({
+            paymentStatus: 'pending_verification',
           });
         }
-      } catch (err) {
-        console.error('Error reverting payment for invoice:', err);
-      }
-
-      if (currentData?.subscriptionId) {
-        await db.collection('bookings').doc(currentData.subscriptionId).update({
-          paymentStatus: 'pending',
+      } else {
+        // status is pending or overdue
+        await db.collection('invoices').doc(invoiceId).update({
+          paidAt: 0,
         });
+
+        try {
+          const paymentsQuery = await db.collection('payments')
+            .where('invoiceId', '==', invoiceId)
+            .limit(1)
+            .get();
+
+          if (!paymentsQuery.empty) {
+            const paymentDocId = paymentsQuery.docs[0].id;
+            await db.collection('payments').doc(paymentDocId).update({
+              status: 'rejected',
+              adminVerified: false,
+              adminVerifiedAt: 0,
+            });
+          }
+        } catch (err) {
+          console.error('Error syncing payment for invoice:', err);
+        }
+
+        if (currentData?.subscriptionId) {
+          await db.collection('bookings').doc(currentData.subscriptionId).update({
+            paymentStatus: isOverdue ? 'overdue' : 'unpaid',
+          });
+        }
       }
     }
 
