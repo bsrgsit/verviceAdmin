@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb, getAuth } from '@/lib/firebase-admin';
 import { writeAuditLog } from '@/lib/admin-check';
 
+export const dynamic = 'force-dynamic';
+
 function formatPhone(phone?: string) {
   if (!phone) return undefined;
   let clean = phone.trim();

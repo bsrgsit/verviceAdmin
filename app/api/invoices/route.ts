@@ -10,13 +10,14 @@ export async function GET() {
       .orderBy('createdAt', 'desc')
       .get();
 
-    const userPromises = new Map<string, Promise<{ name: string; phoneNumber: string }>>();
+    const userPromises = new Map<string, Promise<{ name: string; phoneNumber: string; community: string }>>();
 
     const invoices = await Promise.all(
       snapshot.docs.map(async (doc) => {
         const data = doc.data();
         let userName = 'Unknown';
         let userPhone = '';
+        let userCommunity = 'Unassigned';
 
         if (data.userId) {
           if (!userPromises.has(data.userId)) {
@@ -27,15 +28,17 @@ export async function GET() {
                 return {
                   name: userData?.name || 'Unknown',
                   phoneNumber: userData?.phoneNumber || '',
+                  community: userData?.community || 'Unassigned',
                 };
               }
-              return { name: 'Unknown', phoneNumber: '' };
+              return { name: 'Unknown', phoneNumber: '', community: 'Unassigned' };
             })();
             userPromises.set(data.userId, promise);
           }
           const userInfo = await userPromises.get(data.userId)!;
           userName = userInfo.name;
           userPhone = userInfo.phoneNumber;
+          userCommunity = userInfo.community;
         }
 
         return {
@@ -43,6 +46,7 @@ export async function GET() {
           ...data,
           userName,
           userPhone,
+          userCommunity,
         };
       })
     );

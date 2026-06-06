@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
 import { writeAuditLog } from '@/lib/admin-check';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const snapshot = await getDb().collection('payments')

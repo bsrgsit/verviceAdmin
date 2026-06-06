@@ -25,6 +25,7 @@ interface Invoice {
   userId: string;
   userName: string;
   userPhone: string;
+  userCommunity?: string;
   amount: number;
   currency: string;
   billingMonth: string;
@@ -296,23 +297,49 @@ export default function InvoicesPage() {
     return true;
   });
 
-  // Group invoices by user
-  const groupedInvoicesMap = new Map<string, { userName: string; userPhone: string; invoices: Invoice[] }>();
+  // Group invoices by community, then by user
+  const communityGroupsMap = new Map<
+    string,
+    {
+      communityName: string;
+      totalPending: number;
+      users: Map<string, { userName: string; userPhone: string; invoices: Invoice[] }>;
+    }
+  >();
+
   filteredInvoices.forEach((inv) => {
-    const key = inv.userId || 'unknown';
-    if (!groupedInvoicesMap.has(key)) {
-      groupedInvoicesMap.set(key, {
+    const communityName = inv.userCommunity || 'Unassigned';
+    if (!communityGroupsMap.has(communityName)) {
+      communityGroupsMap.set(communityName, {
+        communityName,
+        totalPending: 0,
+        users: new Map(),
+      });
+    }
+
+    const group = communityGroupsMap.get(communityName)!;
+
+    if (inv.status !== 'paid') {
+      group.totalPending += inv.amount;
+    }
+
+    const userId = inv.userId || 'unknown';
+    if (!group.users.has(userId)) {
+      group.users.set(userId, {
         userName: inv.userName || 'Unknown User',
         userPhone: inv.userPhone || '',
         invoices: [],
       });
     }
-    groupedInvoicesMap.get(key)!.invoices.push(inv);
+    group.users.get(userId)!.invoices.push(inv);
   });
 
-  const groupedInvoicesList = Array.from(groupedInvoicesMap.entries()).map(([userId, details]) => ({
-    userId,
-    ...details,
+  const communityGroupsList = Array.from(communityGroupsMap.values()).map((cGroup) => ({
+    ...cGroup,
+    usersList: Array.from(cGroup.users.entries()).map(([userId, userDetails]) => ({
+      userId,
+      ...userDetails,
+    })),
   }));
 
   const getStatusBadge = (status: Invoice['status']) => {
@@ -415,7 +442,7 @@ export default function InvoicesPage() {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => handleExpandAll(groupedInvoicesList.map((g) => g.userId))}
+            onClick={() => handleExpandAll(Array.from(new Set(filteredInvoices.map((inv) => inv.userId || 'unknown'))))}
             className="px-3 py-2 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition whitespace-nowrap"
           >
             Expand All
@@ -441,117 +468,142 @@ export default function InvoicesPage() {
           <p className="text-gray-500">No invoices found</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {groupedInvoicesList.map((group) => {
-            const isExpanded = expandedUsers.has(group.userId);
-            const totalAmount = group.invoices.reduce((sum, inv) => sum + inv.amount, 0);
-            return (
-              <div key={group.userId} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Accordion Header */}
-                <button
-                  type="button"
-                  onClick={() => toggleExpandUser(group.userId)}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-gray-50 transition text-left"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="text-gray-400 flex-shrink-0">
-                      {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-gray-600" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-gray-600" />
+        <div className="space-y-8">
+          {communityGroupsList.map((cGroup) => (
+            <div key={cGroup.communityName} className="space-y-3 bg-gray-50/30 p-4 rounded-2xl border border-gray-100/80">
+              {/* Community Group Header */}
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                <div>
+                  <h2 className="text-base font-bold text-gray-950 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-green-600"></span>
+                    {cGroup.communityName}
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    {cGroup.usersList.length} user{cGroup.usersList.length !== 1 ? 's' : ''} with invoices
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100">
+                    Pending: {formatCurrency(cGroup.totalPending)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Users List under this Community */}
+              <div className="space-y-3">
+                {cGroup.usersList.map((group) => {
+                  const isExpanded = expandedUsers.has(group.userId);
+                  const totalAmount = group.invoices.reduce((sum, inv) => sum + inv.amount, 0);
+                  return (
+                    <div key={group.userId} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                      {/* Accordion Header */}
+                      <button
+                        type="button"
+                        onClick={() => toggleExpandUser(group.userId)}
+                        className="w-full flex items-center justify-between p-4 bg-gray-50/50 hover:bg-gray-50 transition text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="text-gray-400 flex-shrink-0">
+                            {isExpanded ? (
+                              <ChevronDown className="w-5 h-5 text-gray-600" />
+                            ) : (
+                              <ChevronRight className="w-5 h-5 text-gray-600" />
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900 text-sm">
+                              {group.userName}
+                            </h3>
+                            <p className="text-xs text-gray-500">{group.userPhone}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm font-medium">
+                          <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
+                            {group.invoices.length} invoice{group.invoices.length !== 1 ? 's' : ''}
+                          </span>
+                          <span className="text-gray-900 font-semibold">
+                            Total: {formatCurrency(totalAmount)}
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Accordion Content */}
+                      {isExpanded && (
+                        <div className="border-t border-gray-100 overflow-x-auto">
+                          <table className="w-full text-left">
+                            <thead className="bg-gray-50/70 border-b border-gray-100">
+                              <tr>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Invoice No.</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Vehicle & Service</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Billing Month</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Amount</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Due Date</th>
+                                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {group.invoices.map((inv) => (
+                                <tr key={inv.id} className="hover:bg-gray-50 transition">
+                                  <td className="px-4 py-3">
+                                    <span className="font-semibold text-gray-800 text-xs">
+                                      {inv.invoiceNumber}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-gray-700">
+                                    <p className="font-medium">{inv.serviceName}</p>
+                                    <p className="text-gray-500 text-[10px]">{inv.vehicleReg}</p>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-gray-600">
+                                    {formatBillingMonthLabel(inv.billingMonth)}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs">
+                                    <span className="font-semibold text-gray-900">
+                                      {formatCurrency(inv.amount)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-gray-500">
+                                    {formatDateTime(inv.dueDate)}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs">
+                                    <span className={`inline-flex px-2 py-0.5 font-semibold rounded-full capitalize text-[10px] ${getStatusBadge(inv.status)}`}>
+                                      {inv.status === 'pending_verification' ? 'Pending Verif.' : inv.status}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-xs">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditModal(inv)}
+                                        disabled={processing === inv.id}
+                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                        title="Edit invoice"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteInvoice(inv.id)}
+                                        disabled={processing === inv.id}
+                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                        title="Delete invoice"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 text-sm">
-                        {group.userName}
-                      </h3>
-                      <p className="text-xs text-gray-500">{group.userPhone}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm font-medium">
-                    <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
-                      {group.invoices.length} invoice{group.invoices.length !== 1 ? 's' : ''}
-                    </span>
-                    <span className="text-gray-900 font-semibold">
-                      Total: {formatCurrency(totalAmount)}
-                    </span>
-                  </div>
-                </button>
-
-                {/* Accordion Content */}
-                {isExpanded && (
-                  <div className="border-t border-gray-100 overflow-x-auto">
-                    <table className="w-full text-left">
-                      <thead className="bg-gray-50/70 border-b border-gray-100">
-                        <tr>
-                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Invoice No.</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Vehicle & Service</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Billing Month</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Amount</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Due Date</th>
-                          <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {group.invoices.map((inv) => (
-                          <tr key={inv.id} className="hover:bg-gray-50 transition">
-                            <td className="px-4 py-3">
-                              <span className="font-semibold text-gray-800 text-xs">
-                                {inv.invoiceNumber}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-xs text-gray-700">
-                              <p className="font-medium">{inv.serviceName}</p>
-                              <p className="text-gray-500 text-[10px]">{inv.vehicleReg}</p>
-                            </td>
-                            <td className="px-4 py-3 text-xs text-gray-600">
-                              {formatBillingMonthLabel(inv.billingMonth)}
-                            </td>
-                            <td className="px-4 py-3 text-xs">
-                              <span className="font-semibold text-gray-900">
-                                {formatCurrency(inv.amount)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-xs text-gray-500">
-                              {formatDateTime(inv.dueDate)}
-                            </td>
-                            <td className="px-4 py-3 text-xs">
-                              <span className={`inline-flex px-2 py-0.5 font-semibold rounded-full capitalize text-[10px] ${getStatusBadge(inv.status)}`}>
-                                {inv.status === 'pending_verification' ? 'Pending Verif.' : inv.status}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right text-xs">
-                              <div className="flex items-center justify-end gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => openEditModal(inv)}
-                                  disabled={processing === inv.id}
-                                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                                  title="Edit invoice"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteInvoice(inv.id)}
-                                  disabled={processing === inv.id}
-                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
-                                  title="Delete invoice"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
 

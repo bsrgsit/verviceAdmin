@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -34,41 +36,42 @@ export async function GET(
         chunks.push(userIds.slice(i, i + 30));
       }
 
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
       for (const chunk of chunks) {
         // Active bookings
         try {
           const bookSnap = await db.collection('bookings')
             .where('userId', 'in', chunk)
-            .where('status', '==', 'active')
             .get();
-          activeBookings += bookSnap.size;
-        } catch (e) {}
+          bookSnap.docs.forEach((doc) => {
+            if (doc.data().status === 'active') {
+              activeBookings++;
+            }
+          });
+        } catch (e) {
+          console.error('Stats active bookings query failed:', e);
+        }
 
-        // Pending payments
+        // Payments & Monthly revenue
         try {
           const paySnap = await db.collection('payments')
             .where('userId', 'in', chunk)
-            .where('status', '==', 'pending_manual_verify')
             .get();
-          pendingPayments += paySnap.size;
-        } catch (e) {}
-
-        // Monthly revenue
-        try {
-          const startOfMonth = new Date();
-          startOfMonth.setDate(1);
-          startOfMonth.setHours(0, 0, 0, 0);
-          const revSnap = await db.collection('payments')
-            .where('userId', 'in', chunk)
-            .where('adminVerified', '==', true)
-            .get();
-          revSnap.forEach((doc) => {
+          paySnap.docs.forEach((doc) => {
             const data = doc.data();
-            if (data.createdAt >= startOfMonth.getTime()) {
+            if (data.status === 'pending_manual_verify') {
+              pendingPayments++;
+            }
+            if (data.adminVerified === true && data.createdAt >= startOfMonth.getTime()) {
               monthlyRevenue += data.amount || 0;
             }
           });
-        } catch (e) {}
+        } catch (e) {
+          console.error('Stats payments query failed:', e);
+        }
       }
     }
 
