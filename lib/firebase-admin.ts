@@ -4,49 +4,42 @@ let initialized = false;
 
 function ensureInitialized() {
   if (initialized) return;
-  
+
+  // Preferred: single base64-encoded service account JSON (avoids all PEM formatting issues)
+  const base64Key = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+  if (base64Key) {
+    try {
+      const decoded = Buffer.from(base64Key, 'base64').toString('utf-8');
+      const serviceAccount = JSON.parse(decoded);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+      initialized = true;
+      console.log('Firebase Admin SDK initialized via FIREBASE_SERVICE_ACCOUNT_KEY');
+      return;
+    } catch (err) {
+      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', err);
+      throw new Error('Invalid FIREBASE_SERVICE_ACCOUNT_KEY. Make sure it is the base64-encoded service account JSON.');
+    }
+  }
+
+  // Fallback: individual env vars
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
   if (privateKey) {
     privateKey = privateKey.trim();
-    // Strip leading/trailing quotes if the key was pasted with quotes
     if ((privateKey.startsWith('"') && privateKey.endsWith('"')) ||
         (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
       privateKey = privateKey.slice(1, -1).trim();
     }
-    // Convert escaped newlines back to actual newlines
     privateKey = privateKey.replace(/\\n/g, '\n');
-
-    // Reconstruct PEM formatting robustly to fix missing newlines from copy-paste
-    const header = '-----BEGIN PRIVATE KEY-----';
-    const footer = '-----END PRIVATE KEY-----';
-    
-    let base64Body = privateKey;
-    if (base64Body.includes(header)) {
-      base64Body = base64Body.replace(header, '');
-    }
-    if (base64Body.includes(footer)) {
-      base64Body = base64Body.replace(footer, '');
-    }
-    // Remove all whitespace/newlines from the base64 body
-    base64Body = base64Body.replace(/\s+/g, '');
-    
-    // Reassemble key with correct headers and newlines
-    privateKey = `${header}\n${base64Body}\n${footer}\n`;
-
-    console.log('Firebase Key Debug (Normalized):', {
-      length: privateKey.length,
-      startsWithBegin: privateKey.startsWith('-----BEGIN PRIVATE KEY-----'),
-      indexOfBegin: privateKey.indexOf('-----BEGIN PRIVATE KEY-----'),
-      first30: privateKey.substring(0, 30),
-      last30: privateKey.substring(Math.max(0, privateKey.length - 30)),
-    });
   }
 
   if (!projectId || !clientEmail || !privateKey) {
-    throw new Error('Firebase Admin SDK credentials not configured.');
+    throw new Error('Firebase Admin SDK credentials not configured. Set FIREBASE_SERVICE_ACCOUNT_KEY (base64) or individual FIREBASE_* env vars.');
   }
 
   admin.initializeApp({
