@@ -179,6 +179,52 @@ export default function InvoicesPage() {
     }
   };
 
+  const handleRunMonthlyBilling = async () => {
+    if (!confirm('Are you sure you want to generate invoices for the previous billing month for all active subscriptions?')) return;
+    
+    setProcessing('run-monthly');
+    try {
+      const res = await fetch('/api/invoices/run-monthly', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Successfully generated ${data.created} invoices. Skipped ${data.skipped} duplicates.`);
+        await fetchInvoices();
+      } else {
+        alert(`Failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      console.error('Failed to run monthly billing:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const handleCheckOverdue = async () => {
+    if (!confirm('Are you sure you want to scan and mark all unpaid invoices past their due dates as overdue?')) return;
+    
+    setProcessing('check-overdue');
+    try {
+      const res = await fetch('/api/invoices/check-overdue', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Overdue check complete. Marked ${data.updated} invoices/subscriptions as overdue.`);
+        await fetchInvoices();
+      } else {
+        alert(`Failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      console.error('Failed to check overdue:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setProcessing(null);
+    }
+  };
+
   const formatBillingMonthLabel = (billingMonth: string) => {
     if (!billingMonth || billingMonth.length !== 7) return billingMonth;
     const [year, month] = billingMonth.split('-');
@@ -238,13 +284,39 @@ export default function InvoicesPage() {
             {invoices.length} invoices generated in total
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-        >
-          <Plus className="w-4 h-4" />
-          Create Invoice
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleRunMonthlyBilling}
+            disabled={processing !== null}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 text-sm font-medium"
+          >
+            {processing === 'run-monthly' ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Calendar className="w-4 h-4" />
+            )}
+            Run Monthly Billing
+          </button>
+          <button
+            onClick={handleCheckOverdue}
+            disabled={processing !== null}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition disabled:opacity-50 text-sm font-medium"
+          >
+            {processing === 'check-overdue' ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Clock className="w-4 h-4" />
+            )}
+            Scan Overdue
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            Create Invoice
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
