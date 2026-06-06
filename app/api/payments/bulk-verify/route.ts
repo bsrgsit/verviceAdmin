@@ -1,20 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
-import { writeAuditLog } from '@/lib/admin-check';
+import { writeAuditLog, getAuthenticatedAdmin, canAccessUser } from '@/lib/admin-check';
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { paymentIds } = await request.json();
 
     if (!paymentIds || !Array.isArray(paymentIds) || paymentIds.length === 0) {
       return NextResponse.json({ error: 'No payment IDs provided' }, { status: 400 });
     }
 
+    const db = getDb();
+    
+    // First, verify access to all payments to prevent unauthorized modifications
+    for (const paymentId of paymentIds) {
+      const paymentDoc = await db.collection('payments').doc(paymentId).get();
+      if (paymentDoc.exists) {
+        const paymentData = paymentDoc.data();
+        if (paymentData && !await canAccessUser(admin, paymentData.userId)) {
+          return NextResponse.json(
+            { error: 'Access denied. You do not have permission to verify one or more of these payments.' },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     const now = Date.now();
-    const batch = getDb().batch();
+    const batch = db.batch();
 
     for (const paymentId of paymentIds) {
-      const paymentRef = getDb().collection('payments').doc(paymentId);
+      const paymentRef = db.collection('payments').doc(paymentId);
       const paymentDoc = await paymentRef.get();
 
       if (paymentDoc.exists) {
@@ -28,7 +49,7 @@ export async function POST(request: NextRequest) {
         });
 
         if (paymentData.bookingId) {
-          const bookingRef = getDb().collection('bookings').doc(paymentData.bookingId);
+          const bookingRef = db.collection('bookings').doc(paymentData.bookingId);
           batch.update(bookingRef, {
             paymentStatus: 'paid',
             lastPaymentDate: now,
@@ -37,7 +58,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (paymentData.invoiceId) {
-          const invoiceRef = getDb().collection('invoices').doc(paymentData.invoiceId);
+          const invoiceRef = db.collection('invoices').doc(paymentData.invoiceId);
           batch.update(invoiceRef, {
             status: 'paid',
             paidAt: now,
@@ -50,7 +71,7 @@ export async function POST(request: NextRequest) {
     await batch.commit();
 
     await writeAuditLog(
-      'admin',
+      admin.email,
       'bulk_payment_verified',
       paymentIds.join(', '),
       'payment',

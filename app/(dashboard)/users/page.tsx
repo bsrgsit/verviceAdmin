@@ -51,6 +51,20 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
 
   // Modals and Forms State
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -301,15 +315,18 @@ export default function UsersPage() {
   };
 
   const filteredUsers = users.filter((u) => {
-    if (!search) return true;
-    const s = search.toLowerCase();
+    if (!debouncedSearch) return true;
+    const s = debouncedSearch.toLowerCase();
     return (
       u.name?.toLowerCase().includes(s) ||
-      u.phoneNumber?.includes(search) ||
+      u.phoneNumber?.includes(debouncedSearch) ||
       u.community?.toLowerCase().includes(s) ||
       u.email?.toLowerCase().includes(s)
     );
   });
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -345,8 +362,21 @@ export default function UsersPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+        <div className="space-y-4 animate-pulse">
+          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+            <div className="bg-gray-50 h-12 border-b border-gray-200"></div>
+            <div className="divide-y divide-gray-100">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="p-4 flex items-center justify-between space-x-4">
+                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : filteredUsers.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
@@ -368,7 +398,7 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredUsers.map((user) => (
+                {paginatedUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50 transition">
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900 text-sm">{user.name}</p>
@@ -435,6 +465,34 @@ export default function UsersPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 bg-white border-t border-gray-200 flex items-center justify-between">
+              <div className="text-xs text-gray-500">
+                Showing {Math.min(filteredUsers.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(filteredUsers.length, currentPage * itemsPerPage)} of {filteredUsers.length} entries
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition whitespace-nowrap"
+                >
+                  Previous
+                </button>
+                <span className="text-xs text-gray-600 font-medium">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition whitespace-nowrap"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

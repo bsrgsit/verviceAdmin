@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
-import { writeAuditLog } from '@/lib/admin-check';
+import { writeAuditLog, getAuthenticatedAdmin, canAccessUser } from '@/lib/admin-check';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const paymentId = params.id;
-    const paymentDoc = await getDb().collection('payments').doc(paymentId).get();
+    const db = getDb();
+    const paymentDoc = await db.collection('payments').doc(paymentId).get();
 
     if (!paymentDoc.exists) {
       return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
@@ -19,7 +25,11 @@ export async function POST(
       return NextResponse.json({ error: 'Payment data not found' }, { status: 404 });
     }
 
-    const db = getDb();
+    // Verify community admin owns this payment / user
+    if (!await canAccessUser(admin, paymentData.userId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     await db.collection('payments').doc(paymentId).update({
       status: 'rejected',
       adminNotes: 'Rejected by admin',
@@ -50,7 +60,7 @@ export async function POST(
     }
 
     await writeAuditLog(
-      'admin',
+      admin.email,
       'payment_rejected',
       paymentId,
       'payment',

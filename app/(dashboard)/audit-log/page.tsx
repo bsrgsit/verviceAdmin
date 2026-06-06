@@ -27,7 +27,21 @@ export default function AuditLogPage() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, actionFilter]);
 
   useEffect(() => {
     fetchEntries();
@@ -55,8 +69,8 @@ export default function AuditLogPage() {
 
   const filteredEntries = entries.filter((e) => {
     if (actionFilter !== 'all' && !e.action.includes(actionFilter)) return false;
-    if (search) {
-      const s = search.toLowerCase();
+    if (debouncedSearch) {
+      const s = debouncedSearch.toLowerCase();
       return (
         e.adminEmail.toLowerCase().includes(s) ||
         e.details.toLowerCase().includes(s) ||
@@ -65,6 +79,9 @@ export default function AuditLogPage() {
     }
     return true;
   });
+
+  const totalPages = Math.ceil(filteredEntries.length / itemsPerPage);
+  const paginatedEntries = filteredEntries.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -104,8 +121,25 @@ export default function AuditLogPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+        <div className="space-y-4 animate-pulse">
+          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <div className="divide-y divide-gray-100">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="p-4 flex items-start gap-4">
+                  <div className="w-8 h-8 bg-gray-200 rounded-lg flex-shrink-0"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/12"></div>
+                    </div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2 mt-1"></div>
+                  </div>
+                  <div className="h-3 bg-gray-200 rounded w-16 flex-shrink-0"></div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : filteredEntries.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
@@ -113,9 +147,9 @@ export default function AuditLogPage() {
           <p className="text-gray-500">No audit entries found</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="divide-y divide-gray-100">
-            {filteredEntries.map((entry) => (
+            {paginatedEntries.map((entry) => (
               <div key={entry.id} className="p-4 flex items-start gap-4 hover:bg-gray-50 transition">
                 <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   {getActionIcon(entry.action)}
@@ -125,7 +159,7 @@ export default function AuditLogPage() {
                     <span className="font-medium text-gray-900 text-sm">{entry.adminEmail}</span>
                     <span className="text-sm text-gray-600">{entry.action}</span>
                     <span className="text-xs text-gray-400">
-                      {entry.targetType}: {entry.targetId.slice(0, 12)}...
+                      {entry.targetType}: {entry.targetId ? (entry.targetId.length > 12 ? `${entry.targetId.slice(0, 12)}...` : entry.targetId) : 'N/A'}
                     </span>
                   </div>
                   <p className="text-sm text-gray-500 mt-1">{entry.details}</p>
@@ -136,6 +170,34 @@ export default function AuditLogPage() {
               </div>
             ))}
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 bg-white border-t border-gray-200 flex items-center justify-between">
+              <div className="text-xs text-gray-500">
+                Showing {Math.min(filteredEntries.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(filteredEntries.length, currentPage * itemsPerPage)} of {filteredEntries.length} entries
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition whitespace-nowrap"
+                >
+                  Previous
+                </button>
+                <span className="text-xs text-gray-600 font-medium">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition whitespace-nowrap"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

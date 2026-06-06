@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
-import { writeAuditLog } from '@/lib/admin-check';
+import { writeAuditLog, getAuthenticatedAdmin, canAccessUser } from '@/lib/admin-check';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const paymentId = params.id;
     const body = await request.json();
     const db = getDb();
@@ -14,6 +19,16 @@ export async function PATCH(
     const paymentDoc = await db.collection('payments').doc(paymentId).get();
     if (!paymentDoc.exists) {
       return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
+    }
+
+    const paymentData = paymentDoc.data();
+    if (!paymentData) {
+      return NextResponse.json({ error: 'Payment data not found' }, { status: 404 });
+    }
+
+    // Verify community admin owns this payment / user
+    if (!await canAccessUser(admin, paymentData.userId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const updates: Record<string, any> = {};
@@ -32,7 +47,7 @@ export async function PATCH(
     await db.collection('payments').doc(paymentId).update(updates);
 
     await writeAuditLog(
-      'admin',
+      admin.email,
       'payment_updated',
       paymentId,
       'payment',
@@ -51,6 +66,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const paymentId = params.id;
     const db = getDb();
 
@@ -60,10 +80,19 @@ export async function DELETE(
     }
 
     const currentData = paymentDoc.data();
+    if (!currentData) {
+      return NextResponse.json({ error: 'Payment data not found' }, { status: 404 });
+    }
+
+    // Verify community admin owns this payment / user
+    if (!await canAccessUser(admin, currentData.userId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     await db.collection('payments').doc(paymentId).delete();
 
     await writeAuditLog(
-      'admin',
+      admin.email,
       'payment_deleted',
       paymentId,
       'payment',

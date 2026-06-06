@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
-import { writeAuditLog } from '@/lib/admin-check';
+import { writeAuditLog, getAuthenticatedAdmin, canAccessUser } from '@/lib/admin-check';
 
 export async function POST() {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const db = getDb();
     const now = Date.now();
 
@@ -21,6 +26,11 @@ export async function POST() {
 
       // If due date has passed
       if (dueDate < now) {
+        // Enforce role-based access control based on assignedCommunities (Issue 4)
+        if (!await canAccessUser(admin, data.userId)) {
+          continue;
+        }
+
         // Mark invoice as overdue
         batch.update(doc.ref, { status: 'overdue' });
 
@@ -37,7 +47,7 @@ export async function POST() {
     if (updatedCount > 0) {
       await batch.commit();
       await writeAuditLog(
-        'admin',
+        admin.email,
         'invoices_marked_overdue',
         'bulk',
         'invoice',

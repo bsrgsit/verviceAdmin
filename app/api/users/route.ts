@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, getAuth } from '@/lib/firebase-admin';
-import { writeAuditLog } from '@/lib/admin-check';
+import { writeAuditLog, getAuthenticatedAdmin, enforceSuperAdmin, canAccessCommunity } from '@/lib/admin-check';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,12 +15,24 @@ function formatPhone(phone?: string) {
 
 export async function GET() {
   try {
-    const snapshot = await getDb().collection('users').get();
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const users = snapshot.docs.map((doc) => ({
+    const db = getDb();
+    // Enforce sensible query limit to prevent database scaling cost blowups (Issue 6)
+    const snapshot = await db.collection('users').limit(200).get();
+
+    let users = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
-    }));
+    })) as any[];
+
+    // Enforce role-based access control based on assignedCommunities (Issue 4)
+    if (!enforceSuperAdmin(admin)) {
+      users = users.filter((u) => admin.assignedCommunities.includes(u.community));
+    }
 
     return NextResponse.json(users);
   } catch (error: any) {
@@ -31,6 +43,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { name, email, phoneNumber, community, block, flatNumber } = body;
 
@@ -39,6 +56,13 @@ export async function POST(request: NextRequest) {
         { error: 'Name, email, and phone number are required' },
         { status: 400 }
       );
+    }
+
+    // Enforce role-based access control based on assignedCommunities (Issue 4)
+    if (!enforceSuperAdmin(admin)) {
+      if (!community || !canAccessCommunity(admin, community)) {
+        return NextResponse.json({ error: 'Access denied to target community' }, { status: 403 });
+      }
     }
 
     const formattedPhone = formatPhone(phoneNumber);
@@ -96,7 +120,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Write Audit Log
     await writeAuditLog(
-      'admin',
+      admin.email,
       'user_created',
       uid,
       'user',

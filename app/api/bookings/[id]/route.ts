@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
-import { writeAuditLog } from '@/lib/admin-check';
+import { writeAuditLog, getAuthenticatedAdmin, canAccessUser } from '@/lib/admin-check';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const bookingId = params.id;
     const body = await request.json();
     const db = getDb();
@@ -16,8 +21,17 @@ export async function PATCH(
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
 
-    const updates: Record<string, any> = {};
+    const bookingData = bookingDoc.data();
+    if (!bookingData) {
+      return NextResponse.json({ error: 'Booking data not found' }, { status: 404 });
+    }
 
+    // Verify community admin owns this user / booking
+    if (!await canAccessUser(admin, bookingData.userId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    const updates: Record<string, any> = {};
     if (body.price !== undefined) updates.price = Number(body.price);
     if (body.startDate !== undefined) updates.startDate = Number(body.startDate);
     if (body.paymentDueDate !== undefined) updates.paymentDueDate = Number(body.paymentDueDate);
@@ -34,7 +48,7 @@ export async function PATCH(
     await db.collection('bookings').doc(bookingId).update(updates);
 
     await writeAuditLog(
-      'admin',
+      admin.email,
       'booking_updated',
       bookingId,
       'booking',
@@ -53,6 +67,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const bookingId = params.id;
     const db = getDb();
 
@@ -62,10 +81,19 @@ export async function DELETE(
     }
 
     const currentData = bookingDoc.data();
+    if (!currentData) {
+      return NextResponse.json({ error: 'Booking data not found' }, { status: 404 });
+    }
+
+    // Verify community admin owns this user / booking
+    if (!await canAccessUser(admin, currentData.userId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     await db.collection('bookings').doc(bookingId).delete();
 
     await writeAuditLog(
-      'admin',
+      admin.email,
       'booking_deleted',
       bookingId,
       'booking',

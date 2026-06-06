@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminUser, updateLastLogin, writeAuditLog } from '@/lib/admin-check';
 import { getAuth } from '@/lib/firebase-admin';
+import { createSessionToken } from '@/lib/session-crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,12 +81,14 @@ export async function POST(request: NextRequest) {
     });
 
     // Set session cookie (24 hours)
-    response.cookies.set('admin_session', JSON.stringify({
+    const sessionToken = await createSessionToken({
       email: adminUser.email,
       isAdmin: true,
       role: adminUser.role,
       assignedCommunities: adminUser.assignedCommunities,
-    }), {
+    }, 60 * 60 * 24);
+
+    response.cookies.set('admin_session', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

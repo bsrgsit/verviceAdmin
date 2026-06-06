@@ -78,52 +78,25 @@ export default function CommunityDetailPage() {
   const [editBillingMonth, setEditBillingMonth] = useState('');
 
   useEffect(() => {
-    fetchStats();
+    fetchCommunityData();
   }, [communityId]);
 
-  useEffect(() => {
-    if (activeTab !== 'overview') {
-      fetchTabData(activeTab);
-    }
-  }, [activeTab, communityId]);
-
-  const fetchStats = async () => {
+  const fetchCommunityData = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/communities/${communityId}/stats`);
+      const res = await fetch(`/api/communities/${communityId}`);
       const data = await res.json();
-      if (!data.error) setStats(data);
-    } catch (error) {
-      console.error('Failed to fetch community stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchTabData = async (tab: TabType) => {
-    setTabLoading(true);
-    try {
-      if (tab === 'users' && users.length === 0) {
-        const res = await fetch(`/api/communities/${communityId}/users`);
-        const data = await res.json();
-        if (Array.isArray(data)) setUsers(data);
-      } else if (tab === 'bookings' && bookings.length === 0) {
-        const res = await fetch(`/api/communities/${communityId}/bookings`);
-        const data = await res.json();
-        if (Array.isArray(data)) setBookings(data);
-      } else if (tab === 'payments' && payments.length === 0) {
-        const res = await fetch(`/api/communities/${communityId}/payments`);
-        const data = await res.json();
-        if (Array.isArray(data)) setPayments(data);
-      } else if (tab === 'invoices' && invoices.length === 0) {
-        const res = await fetch(`/api/communities/${communityId}/invoices`);
-        const data = await res.json();
-        if (Array.isArray(data)) setInvoices(data);
+      if (!data.error) {
+        setStats(data.stats);
+        setUsers(data.users || []);
+        setBookings(data.bookings || []);
+        setPayments(data.payments || []);
+        setInvoices(data.invoices || []);
       }
     } catch (error) {
-      console.error(`Failed to fetch ${tab} data:`, error);
+      console.error('Failed to fetch community details:', error);
     } finally {
-      setTabLoading(false);
+      setLoading(false);
     }
   };
 
@@ -134,10 +107,7 @@ export default function CommunityDetailPage() {
         method: 'POST',
       });
       if (res.ok) {
-        const paymentsRes = await fetch(`/api/communities/${communityId}/payments`);
-        const paymentsData = await paymentsRes.json();
-        if (Array.isArray(paymentsData)) setPayments(paymentsData);
-        await fetchStats();
+        await fetchCommunityData();
       }
     } catch (e) {
       console.error('Failed to verify payment:', e);
@@ -153,10 +123,7 @@ export default function CommunityDetailPage() {
         method: 'POST',
       });
       if (res.ok) {
-        const paymentsRes = await fetch(`/api/communities/${communityId}/payments`);
-        const paymentsData = await paymentsRes.json();
-        if (Array.isArray(paymentsData)) setPayments(paymentsData);
-        await fetchStats();
+        await fetchCommunityData();
       }
     } catch (e) {
       console.error('Failed to reject payment:', e);
@@ -173,10 +140,7 @@ export default function CommunityDetailPage() {
         method: 'DELETE',
       });
       if (res.ok) {
-        const invoicesRes = await fetch(`/api/communities/${communityId}/invoices`);
-        const invoicesData = await invoicesRes.json();
-        if (Array.isArray(invoicesData)) setInvoices(invoicesData);
-        await fetchStats();
+        await fetchCommunityData();
       }
     } catch (e) {
       console.error('Failed to delete invoice:', e);
@@ -204,10 +168,7 @@ export default function CommunityDetailPage() {
 
       if (res.ok) {
         setShowEditModal(null);
-        const invoicesRes = await fetch(`/api/communities/${communityId}/invoices`);
-        const invoicesData = await invoicesRes.json();
-        if (Array.isArray(invoicesData)) setInvoices(invoicesData);
-        await fetchStats();
+        await fetchCommunityData();
       }
     } catch (error) {
       console.error('Failed to update invoice:', error);

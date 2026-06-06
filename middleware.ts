@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { verifySessionToken } from '@/lib/session-crypto';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -19,8 +20,8 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    const sessionData = JSON.parse(session.value);
-    if (!sessionData.email || !sessionData.isAdmin) {
+    const sessionData = await verifySessionToken(session.value);
+    if (!sessionData || !sessionData.email || !sessionData.isAdmin) {
       const loginUrl = new URL('/login', request.url);
       return NextResponse.redirect(loginUrl);
     }

@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
-import { writeAuditLog } from '@/lib/admin-check';
+import { writeAuditLog, getAuthenticatedAdmin, canAccessUser } from '@/lib/admin-check';
+import { generateInvoiceNumber } from '@/lib/db-helpers';
 
 export async function POST() {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const db = getDb();
     const now = new Date();
 
@@ -56,6 +62,11 @@ export async function POST() {
       const sub = doc.data();
       const subId = doc.id;
 
+      // Enforce role-based access control based on assignedCommunities (Issue 4)
+      if (!await canAccessUser(admin, sub.userId)) {
+        continue;
+      }
+
       // Skip if invoice already generated for this subscription
       if (existingSubIds.has(subId)) {
         skipped++;
@@ -75,10 +86,8 @@ export async function POST() {
         .get();
       const cycleNumber = subInvoices.size + 1;
 
-      // Generate invoice number matching standard INV-YYYYMMDD-SUBID-CYCLE
-      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-      const shortSubId = subId.slice(-6).toUpperCase();
-      const invoiceNumber = `INV-${dateStr}-${shortSubId}-${cycleNumber}`;
+      // Generate invoice number using helper to avoid duplication (Issue 8)
+      const invoiceNumber = generateInvoiceNumber(subId, cycleNumber, now);
 
       const newInvoice = {
         subscriptionId: subId,
@@ -107,7 +116,7 @@ export async function POST() {
     if (created > 0) {
       await batch.commit();
       await writeAuditLog(
-        'admin',
+        admin.email,
         'invoices_auto_generated',
         'bulk',
         'invoice',

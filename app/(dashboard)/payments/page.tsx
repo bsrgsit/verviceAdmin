@@ -52,6 +52,21 @@ export default function PaymentsPage() {
   const [processing, setProcessing] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'verified'>('pending');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, filter]);
+
   const [selectedPayments, setSelectedPayments] = useState<Set<string>>(new Set());
 
   // Modals state
@@ -296,17 +311,20 @@ export default function PaymentsPage() {
   const filteredPayments = payments.filter((p) => {
     if (filter === 'pending' && p.status !== 'pending_manual_verify') return false;
     if (filter === 'verified' && !p.adminVerified) return false;
-    if (search) {
-      const searchLower = search.toLowerCase();
+    if (debouncedSearch) {
+      const searchLower = debouncedSearch.toLowerCase();
       return (
         p.userName?.toLowerCase().includes(searchLower) ||
-        p.userPhone?.includes(search) ||
+        p.userPhone?.includes(debouncedSearch) ||
         p.upiTransactionId?.toLowerCase().includes(searchLower) ||
-        p.amount.toString().includes(search)
+        p.amount.toString().includes(debouncedSearch)
       );
     }
     return true;
   });
+
+  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
+  const paginatedPayments = filteredPayments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const pendingCount = payments.filter(
     (p) => p.status === 'pending_manual_verify'
@@ -394,8 +412,21 @@ export default function PaymentsPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+        <div className="space-y-4 animate-pulse">
+          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+            <div className="bg-gray-50 h-12 border-b border-gray-200"></div>
+            <div className="divide-y divide-gray-100">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="p-4 flex items-center justify-between space-x-4">
+                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : filteredPayments.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
@@ -439,7 +470,7 @@ export default function PaymentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredPayments.map((payment) => (
+                {paginatedPayments.map((payment) => (
                   <tr
                     key={payment.id}
                     className={`hover:bg-gray-50 transition ${
@@ -547,6 +578,34 @@ export default function PaymentsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 bg-white border-t border-gray-200 flex items-center justify-between">
+              <div className="text-xs text-gray-500">
+                Showing {Math.min(filteredPayments.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(filteredPayments.length, currentPage * itemsPerPage)} of {filteredPayments.length} entries
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition whitespace-nowrap"
+                >
+                  Previous
+                </button>
+                <span className="text-xs text-gray-600 font-medium">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-100 transition whitespace-nowrap"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

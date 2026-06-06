@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
-import { writeAuditLog } from '@/lib/admin-check';
+import { writeAuditLog, getAuthenticatedAdmin, canAccessUser } from '@/lib/admin-check';
+import { buildPaymentHistoryEntry } from '@/lib/db-helpers';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const paymentId = params.id;
-    const paymentDoc = await getDb().collection('payments').doc(paymentId).get();
+    const db = getDb();
+    const paymentDoc = await db.collection('payments').doc(paymentId).get();
 
     if (!paymentDoc.exists) {
       return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
@@ -18,10 +25,16 @@ export async function POST(
     if (!paymentData) {
       return NextResponse.json({ error: 'Payment data not found' }, { status: 404 });
     }
+
+    // Verify community admin owns this payment / user
+    if (!await canAccessUser(admin, paymentData.userId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     const now = Date.now();
 
     // Update payment
-    await getDb().collection('payments').doc(paymentId).update({
+    await db.collection('payments').doc(paymentId).update({
       adminVerified: true,
       adminVerifiedAt: now,
       status: 'verified',
@@ -30,7 +43,7 @@ export async function POST(
     // Update invoice
     let billingCycleEnd = now;
     if (paymentData.invoiceId) {
-      const invoiceDoc = await getDb().collection('invoices').doc(paymentData.invoiceId).get();
+      const invoiceDoc = await db.collection('invoices').doc(paymentData.invoiceId).get();
       if (invoiceDoc.exists) {
         const invoiceData = invoiceDoc.data();
         if (invoiceData?.billingCycleEnd) {
@@ -38,7 +51,7 @@ export async function POST(
         }
       }
 
-      await getDb().collection('invoices').doc(paymentData.invoiceId).update({
+      await db.collection('invoices').doc(paymentData.invoiceId).update({
         status: 'paid',
         paidAt: now,
         paymentTransactionId: paymentData.upiTransactionId,
@@ -55,32 +68,33 @@ export async function POST(
         23, 59, 59, 999
       ).getTime();
 
-      await getDb().collection('bookings').doc(paymentData.bookingId).update({
+      await db.collection('bookings').doc(paymentData.bookingId).update({
         paymentStatus: 'paid',
         lastPaymentDate: now,
         paymentDueDate: nextDueDate,
       });
 
-      // Update payment history
-      const bookingDoc = await getDb().collection('bookings').doc(paymentData.bookingId).get();
+      // Update payment history using central helper to solve duplication (Issue 8)
+      const bookingDoc = await db.collection('bookings').doc(paymentData.bookingId).get();
       const bookingData = bookingDoc.data();
       const paymentHistory = bookingData?.paymentHistory || [];
-      paymentHistory.push({
-        cycle: paymentHistory.length + 1,
-        amount: paymentData.amount,
-        dueDate: nextDueDate,
-        status: 'paid',
-        paidAt: now,
-        transactionId: paymentData.upiTransactionId,
-      });
-      await getDb().collection('bookings').doc(paymentData.bookingId).update({
+      const newEntry = buildPaymentHistoryEntry(
+        paymentHistory.length,
+        paymentData.amount,
+        nextDueDate,
+        now,
+        paymentData.upiTransactionId || ''
+      );
+      paymentHistory.push(newEntry);
+      
+      await db.collection('bookings').doc(paymentData.bookingId).update({
         paymentHistory,
       });
     }
 
     // Write audit log
     await writeAuditLog(
-      'admin',
+      admin.email,
       'payment_verified',
       paymentId,
       'payment',

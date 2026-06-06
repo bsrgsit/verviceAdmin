@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
-import { writeAuditLog } from '@/lib/admin-check';
+import { writeAuditLog, getAuthenticatedAdmin, enforceSuperAdmin, canAccessUser } from '@/lib/admin-check';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const snapshot = await getDb().collection('payments')
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const db = getDb();
+    // Enforce sensible query limit to prevent database scaling cost blowups (Issue 6)
+    const snapshot = await db.collection('payments')
       .orderBy('createdAt', 'desc')
+      .limit(200)
       .get();
 
     // Check for duplicate transaction IDs
@@ -19,32 +27,40 @@ export async function GET() {
       }
     });
 
-    const payments = await Promise.all(
-      snapshot.docs.map(async (doc) => {
-        const data = doc.data();
-        let userName = 'Unknown';
-        let userPhone = '';
+    // Batch fetch users in a single roundtrip to solve N+1 reads (Issue 5)
+    const userIds = Array.from(new Set(snapshot.docs.map(doc => doc.data().userId).filter(Boolean)));
+    const userMap = new Map<string, any>();
 
-        if (data.userId) {
-          const userDoc = await getDb().collection('users').doc(data.userId).get();
-          if (userDoc.exists) {
-            const userData = userDoc.data();
-            userName = userData?.name || 'Unknown';
-            userPhone = userData?.phoneNumber || '';
-          }
+    if (userIds.length > 0) {
+      const userRefs = userIds.map(uid => db.collection('users').doc(uid));
+      const userSnaps = await db.getAll(...userRefs);
+      userSnaps.forEach((userDoc) => {
+        if (userDoc.exists) {
+          userMap.set(userDoc.id, userDoc.data());
         }
+      });
+    }
 
-        return {
-          id: doc.id,
-          ...data,
-          userName,
-          userPhone,
-          duplicate: data.upiTransactionId
-            ? (txnIdCounts.get(data.upiTransactionId) || 0) > 1
-            : false,
-        };
-      })
-    );
+    let payments = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      const userData = userMap.get(data.userId);
+
+      return {
+        id: doc.id,
+        ...data,
+        userName: userData?.name || 'Unknown',
+        userPhone: userData?.phoneNumber || '',
+        community: userData?.community || '',
+        duplicate: data.upiTransactionId
+          ? (txnIdCounts.get(data.upiTransactionId) || 0) > 1
+          : false,
+      };
+    });
+
+    // Enforce role-based access control based on assignedCommunities (Issue 4)
+    if (!enforceSuperAdmin(admin)) {
+      payments = payments.filter((p: any) => admin.assignedCommunities.includes(p.community));
+    }
 
     return NextResponse.json(payments);
   } catch (error: any) {
@@ -55,6 +71,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { userId, bookingId, amount, upiAppName, upiTransactionId, status, adminVerified, adminNotes, createdAt } = body;
 
@@ -63,6 +84,11 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required payment fields (userId, amount)' },
         { status: 400 }
       );
+    }
+
+    // Enforce role-based access control based on assignedCommunities (Issue 4)
+    if (!await canAccessUser(admin, userId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const db = getDb();
@@ -82,8 +108,9 @@ export async function POST(request: NextRequest) {
 
     const docRef = await db.collection('payments').add(newPayment);
 
+    // Write Audit Log
     await writeAuditLog(
-      'admin',
+      admin.email,
       'payment_created',
       docRef.id,
       'payment',

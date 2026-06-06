@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
-import { writeAuditLog } from '@/lib/admin-check';
+import { writeAuditLog, getAuthenticatedAdmin, canAccessUser } from '@/lib/admin-check';
+import { buildPaymentHistoryEntry } from '@/lib/db-helpers';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const invoiceId = params.id;
     const body = await request.json();
     const db = getDb();
@@ -17,8 +23,16 @@ export async function PATCH(
     }
 
     const currentData = invoiceDoc.data();
-    const updates: Record<string, any> = {};
+    if (!currentData) {
+      return NextResponse.json({ error: 'Invoice data not found' }, { status: 404 });
+    }
 
+    // Verify community admin owns this invoice / user
+    if (!await canAccessUser(admin, currentData.userId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    const updates: Record<string, any> = {};
     if (body.amount !== undefined) updates.amount = Number(body.amount);
     if (body.dueDate !== undefined) updates.dueDate = Number(body.dueDate);
     if (body.status !== undefined) updates.status = body.status;
@@ -39,7 +53,7 @@ export async function PATCH(
         paidAt: now,
       });
 
-      // 1. Create or update payment document in 'payments' collection
+      // Create or update payment document in 'payments' collection
       try {
         const paymentsQuery = await db.collection('payments')
           .where('invoiceId', '==', invoiceId)
@@ -94,20 +108,23 @@ export async function PATCH(
           paymentDueDate: nextDueDate,
         });
 
-        // 2. Update booking payment history
+        // Update booking payment history
         try {
           const bookingDoc = await db.collection('bookings').doc(currentData?.subscriptionId || '').get();
           if (bookingDoc.exists) {
             const bookingData = bookingDoc.data();
             const paymentHistory = bookingData?.paymentHistory || [];
-            paymentHistory.push({
-              cycle: paymentHistory.length + 1,
-              amount: Number(body.amount ?? currentData?.amount ?? 0),
-              dueDate: nextDueDate,
-              status: 'paid',
-              paidAt: now,
-              transactionId: currentData?.paymentTransactionId || '',
-            });
+            
+            // centralize buildPaymentHistoryEntry (Issue 8)
+            const newEntry = buildPaymentHistoryEntry(
+              paymentHistory.length,
+              Number(body.amount ?? currentData?.amount ?? 0),
+              nextDueDate,
+              now,
+              currentData?.paymentTransactionId || ''
+            );
+            paymentHistory.push(newEntry);
+
             await db.collection('bookings').doc(currentData?.subscriptionId || '').update({
               paymentHistory,
             });
@@ -146,7 +163,7 @@ export async function PATCH(
     }
 
     await writeAuditLog(
-      'admin',
+      admin.email,
       'invoice_updated',
       invoiceId,
       'invoice',
@@ -165,6 +182,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const invoiceId = params.id;
     const db = getDb();
 
@@ -174,10 +196,19 @@ export async function DELETE(
     }
 
     const currentData = invoiceDoc.data();
+    if (!currentData) {
+      return NextResponse.json({ error: 'Invoice data not found' }, { status: 404 });
+    }
+
+    // Verify community admin owns this invoice / user
+    if (!await canAccessUser(admin, currentData.userId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     await db.collection('invoices').doc(invoiceId).delete();
 
     await writeAuditLog(
-      'admin',
+      admin.email,
       'invoice_deleted',
       invoiceId,
       'invoice',

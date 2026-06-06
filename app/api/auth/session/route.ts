@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifySessionToken } from '@/lib/session-crypto';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const session = request.cookies.get('admin_session');
@@ -8,8 +11,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const sessionData = JSON.parse(session.value);
-    if (!sessionData.email || !sessionData.isAdmin) {
+    const sessionData = await verifySessionToken(session.value);
+    if (!sessionData || !sessionData.email || !sessionData.isAdmin) {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, getAuth } from '@/lib/firebase-admin';
-import { writeAuditLog } from '@/lib/admin-check';
+import { writeAuditLog, getAuthenticatedAdmin, canAccessUser, canAccessCommunity, enforceSuperAdmin } from '@/lib/admin-check';
 
 function formatPhone(phone?: string) {
   if (!phone) return undefined;
@@ -16,9 +16,26 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const userId = params.id;
     const body = await request.json();
     const db = getDb();
+
+    // Verify community admin owns this user
+    if (!await canAccessUser(admin, userId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // If community is updated, ensure the admin has access to the target community
+    if (body.community !== undefined && !enforceSuperAdmin(admin)) {
+      if (!canAccessCommunity(admin, body.community)) {
+        return NextResponse.json({ error: 'Access denied to target community' }, { status: 403 });
+      }
+    }
 
     const userDoc = await db.collection('users').doc(userId).get();
     if (!userDoc.exists) {
@@ -60,7 +77,7 @@ export async function PATCH(
     }
 
     await writeAuditLog(
-      'admin',
+      admin.email,
       'user_updated',
       userId,
       'user',
@@ -79,8 +96,18 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const userId = params.id;
     const db = getDb();
+
+    // Verify community admin owns this user
+    if (!await canAccessUser(admin, userId)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
 
     const userDoc = await db.collection('users').doc(userId).get();
     if (!userDoc.exists) {
@@ -124,7 +151,7 @@ export async function DELETE(
     }
 
     await writeAuditLog(
-      'admin',
+      admin.email,
       'user_deleted',
       userId,
       'user',
