@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   Loader2,
@@ -8,6 +10,7 @@ import {
   Edit2,
   Building2,
   Users,
+  ArrowRight,
 } from 'lucide-react';
 
 interface Community {
@@ -24,6 +27,7 @@ interface Community {
 }
 
 export default function CommunitiesPage() {
+  const router = useRouter();
   const [communities, setCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -145,7 +149,8 @@ export default function CommunitiesPage() {
           {filteredCommunities.map((community) => (
             <div
               key={community.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition"
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition cursor-pointer"
+              onClick={() => router.push(`/communities/${community.id}`)}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -157,12 +162,15 @@ export default function CommunitiesPage() {
                     <p className="text-sm text-gray-500">{community.city}</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleEdit(community)}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleEdit(community); }}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <ArrowRight className="w-4 h-4 text-gray-400" />
+                </div>
               </div>
 
               <div className="space-y-2">

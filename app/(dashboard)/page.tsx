@@ -12,6 +12,7 @@ import {
   ArrowRight,
   CheckCircle2,
   XCircle,
+  Building2,
 } from 'lucide-react';
 import { formatCurrency, timeAgo } from '@/lib/utils';
 
@@ -37,6 +38,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<AuditEntry[]>([]);
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [communities, setCommunities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,11 +46,13 @@ export default function DashboardPage() {
       fetch('/api/dashboard/stats').then((r) => r.json()),
       fetch('/api/dashboard/activity').then((r) => r.json()),
       fetch('/api/dashboard/pending').then((r) => r.json()),
+      fetch('/api/communities').then((r) => r.json()),
     ])
-      .then(([statsData, activityData, pendingData]) => {
+      .then(([statsData, activityData, pendingData, communitiesData]) => {
         setStats(statsData?.error ? null : statsData);
         setRecentActivity(Array.isArray(activityData) ? activityData : []);
         setPendingPayments(Array.isArray(pendingData) ? pendingData : []);
+        setCommunities(Array.isArray(communitiesData) ? communitiesData : []);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -120,6 +124,53 @@ export default function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Communities Section */}
+      {communities.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900 font-semibold">Communities</h2>
+            <Link href="/communities" className="text-sm text-green-600 hover:underline">
+              Manage all
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {communities.slice(0, 4).map((community) => (
+              <Link
+                key={community.id}
+                href={`/communities/${community.id}`}
+                className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center">
+                      <Building2 className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-sm">{community.name}</h3>
+                      <p className="text-xs text-gray-500">{community.city}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-gray-50">
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Registered Users</p>
+                      <p className="text-base font-bold text-gray-900">{community.neighborCount || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase font-semibold">Blocks</p>
+                      <p className="text-base font-bold text-gray-900">{community.blocks?.length || 0}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center justify-between text-xs text-green-600 font-medium pt-2 border-t border-gray-50/50">
+                  <span>View Dashboard</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pending Payments */}

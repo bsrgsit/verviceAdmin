@@ -3,22 +3,23 @@ import { getDb } from '@/lib/firebase-admin';
 
 export async function GET() {
   try {
-    const snapshot = await getDb().collection('payments')
+    const db = getDb();
+    const snapshot = await db.collection('payments')
       .where('status', '==', 'pending_manual_verify')
-      .orderBy('createdAt', 'desc')
-      .limit(10)
+      .limit(20)
       .get();
 
     const payments = await Promise.all(
       snapshot.docs.map(async (doc) => {
         const data = doc.data();
-        // Fetch user name
         let userName = 'Unknown';
         if (data.userId) {
-          const userDoc = await getDb().collection('users').doc(data.userId).get();
-          if (userDoc.exists) {
-            userName = userDoc.data()?.name || 'Unknown';
-          }
+          try {
+            const userDoc = await db.collection('users').doc(data.userId).get();
+            if (userDoc.exists) {
+              userName = userDoc.data()?.name || 'Unknown';
+            }
+          } catch (e) {}
         }
         return {
           id: doc.id,
@@ -28,12 +29,12 @@ export async function GET() {
       })
     );
 
-    return NextResponse.json(payments);
+    // Sort by createdAt in memory
+    payments.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    return NextResponse.json(payments.slice(0, 10));
   } catch (error: any) {
     console.error('Pending payments error:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json([]);
   }
 }

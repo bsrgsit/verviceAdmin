@@ -3,50 +3,64 @@ import { getDb } from '@/lib/firebase-admin';
 
 export async function GET() {
   try {
-    const [
-      usersSnapshot,
-      bookingsSnapshot,
-      paymentsSnapshot,
-    ] = await Promise.all([
-      getDb().collection('users').count().get(),
-      getDb().collection('bookings').where('status', '==', 'active').count().get(),
-      getDb().collection('payments').where('status', '==', 'pending_manual_verify').count().get(),
-    ]);
+    const db = getDb();
 
-    // Overdue bookings
-    const now = Date.now();
-    const overdueSnapshot = await getDb().collection('bookings')
-      .where('paymentStatus', '==', 'overdue')
-      .count()
-      .get();
+    // Each query in its own try/catch for resilience
+    let totalUsers = 0;
+    try {
+      const snap = await db.collection('users').count().get();
+      totalUsers = snap.data().count;
+    } catch (e) { console.error('Stats: users count failed', e); }
 
-    // Monthly revenue (verified payments this month)
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    let activeBookings = 0;
+    try {
+      const snap = await db.collection('bookings').where('status', '==', 'active').count().get();
+      activeBookings = snap.data().count;
+    } catch (e) { console.error('Stats: active bookings count failed', e); }
 
-    const revenueSnapshot = await getDb().collection('payments')
-      .where('adminVerified', '==', true)
-      .where('createdAt', '>=', startOfMonth.getTime())
-      .get();
+    let pendingPayments = 0;
+    try {
+      const snap = await db.collection('payments').where('status', '==', 'pending_manual_verify').count().get();
+      pendingPayments = snap.data().count;
+    } catch (e) { console.error('Stats: pending payments count failed', e); }
+
+    let overdueBookings = 0;
+    try {
+      const snap = await db.collection('bookings').where('paymentStatus', '==', 'overdue').count().get();
+      overdueBookings = snap.data().count;
+    } catch (e) { console.error('Stats: overdue bookings count failed', e); }
 
     let monthlyRevenue = 0;
-    revenueSnapshot.forEach((doc) => {
-      monthlyRevenue += doc.data().amount || 0;
-    });
+    try {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      const snap = await db.collection('payments')
+        .where('adminVerified', '==', true)
+        .get();
+      snap.forEach((doc) => {
+        const data = doc.data();
+        if (data.createdAt >= startOfMonth.getTime()) {
+          monthlyRevenue += data.amount || 0;
+        }
+      });
+    } catch (e) { console.error('Stats: monthly revenue failed', e); }
 
     return NextResponse.json({
-      totalUsers: usersSnapshot.data().count || 0,
-      activeBookings: bookingsSnapshot.data().count || 0,
-      pendingPayments: paymentsSnapshot.data().count || 0,
-      overdueBookings: overdueSnapshot.data().count || 0,
+      totalUsers,
+      activeBookings,
+      pendingPayments,
+      overdueBookings,
       monthlyRevenue,
     });
   } catch (error: any) {
     console.error('Stats error:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      totalUsers: 0,
+      activeBookings: 0,
+      pendingPayments: 0,
+      overdueBookings: 0,
+      monthlyRevenue: 0,
+    });
   }
 }
