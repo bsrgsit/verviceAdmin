@@ -32,18 +32,21 @@ Get your Firebase Admin SDK service account key from:
 
 ### 3. Create first admin user
 
-1. Go to **Firebase Console → Authentication** and create a user with email `admin@vervice.com`
-2. Go to **Firestore Database** and create document:
+Instead of manually creating database entries, you can run the helper script in the repository:
 
+```bash
+node scripts/create-admin.js <path-to-service-account.json> <admin-email> <admin-password> [admin-name]
 ```
-admins/admin@vervice.com
-  ├── email: "admin@vervice.com"
-  ├── name: "Admin"
-  ├── role: "super_admin"
-  ├── assignedCommunities: []
-  ├── isActive: true
-  └── createdAt: <timestamp>
+
+Example:
+```bash
+node scripts/create-admin.js "path/to/key.json" "admin@vervice.com" "yourpassword" "Super Admin"
 ```
+
+This script will automatically:
+1. Create the user in Firebase Authentication (or update the password if the user already exists).
+2. Authorize the user in Firestore with the `super_admin` role in the `admins` collection.
+
 
 ### 4. Run development server
 
