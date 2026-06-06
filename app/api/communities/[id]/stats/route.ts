@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
+import { getMillis } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,8 +66,9 @@ export async function GET(
             if (data.status === 'pending_manual_verify') {
               pendingPayments++;
             }
-            if (data.adminVerified === true && data.createdAt >= startOfMonth.getTime()) {
-              monthlyRevenue += data.amount || 0;
+            const createdAtMillis = getMillis(data.createdAt);
+            if (data.adminVerified === true && createdAtMillis >= startOfMonth.getTime()) {
+              monthlyRevenue += Number(data.amount) || 0;
             }
           });
         } catch (e) {

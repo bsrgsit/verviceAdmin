@@ -42,3 +42,23 @@ export function timeAgo(timestamp: number): string {
   if (days < 30) return `${days}d ago`;
   return formatDate(timestamp);
 }
+
+export function getMillis(val: any): number {
+  if (!val) return 0;
+  if (typeof val === 'number') return val;
+  if (typeof val.toMillis === 'function') return val.toMillis();
+  if (val.toDate && typeof val.toDate === 'function') return val.toDate().getTime();
+  if (typeof val.seconds === 'number') {
+    return val.seconds * 1000 + Math.floor((val.nanoseconds || 0) / 1000000);
+  }
+  if (typeof val._seconds === 'number') {
+    return val._seconds * 1000 + Math.floor((val._nanoseconds || 0) / 1000000);
+  }
+  if (val instanceof Date) return val.getTime();
+  const parsed = Number(val);
+  if (!isNaN(parsed)) return parsed;
+  const dateParsed = Date.parse(val);
+  if (!isNaN(dateParsed)) return dateParsed;
+  return 0;
+}
+

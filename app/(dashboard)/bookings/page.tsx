@@ -41,6 +41,8 @@ interface Booking {
   vehicleName: string;
   vehicleReg: string;
   serviceName: string;
+  serviceType?: string;
+  description?: string;
   price: number;
   status: string;
   paymentStatus: string;
@@ -90,11 +92,17 @@ export default function BookingsPage() {
   const [editPaymentDueDate, setEditPaymentDueDate] = useState('');
   const [editVehicleName, setEditVehicleName] = useState('');
   const [editVehicleReg, setEditVehicleReg] = useState('');
+  const [editServiceName, setEditServiceName] = useState('');
+  const [editServiceType, setEditServiceType] = useState('monthly');
+  const [editDescription, setEditDescription] = useState('');
+  const [editStartDate, setEditStartDate] = useState('');
 
   // Create Form State
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedVehicleReg, setSelectedVehicleReg] = useState('');
   const [newServiceName, setNewServiceName] = useState('');
+  const [newServiceType, setNewServiceType] = useState('monthly');
+  const [newDescription, setNewDescription] = useState('');
   const [newPrice, setNewPrice] = useState('');
   const [newStartDate, setNewStartDate] = useState('');
   const [newDueDate, setNewDueDate] = useState('');
@@ -144,6 +152,8 @@ export default function BookingsPage() {
           vehicleName,
           vehicleReg: selectedVehicleReg,
           serviceName: newServiceName,
+          serviceType: newServiceType,
+          description: newDescription,
           price: Number(newPrice),
           startDate: newStartDate ? new Date(newStartDate).getTime() : Date.now(),
           paymentDueDate: newDueDate ? new Date(newDueDate).getTime() : undefined,
@@ -205,6 +215,10 @@ export default function BookingsPage() {
           status: editStatus,
           vehicleName: editVehicleName,
           vehicleReg: editVehicleReg,
+          serviceName: editServiceName,
+          serviceType: editServiceType,
+          description: editDescription,
+          startDate: editStartDate ? new Date(editStartDate).getTime() : 0,
           paymentDueDate: editPaymentDueDate ? new Date(editPaymentDueDate).getTime() : 0,
         }),
       });
@@ -272,6 +286,8 @@ export default function BookingsPage() {
     setSelectedUserId('');
     setSelectedVehicleReg('');
     setNewServiceName('');
+    setNewServiceType('monthly');
+    setNewDescription('');
     setNewPrice('');
     setNewStartDate('');
     setNewDueDate('');
@@ -321,6 +337,9 @@ export default function BookingsPage() {
     setEditStatus(booking.status);
     setEditVehicleName(booking.vehicleName || '');
     setEditVehicleReg(booking.vehicleReg || '');
+    setEditServiceName(booking.serviceName || '');
+    setEditServiceType(booking.serviceType || 'monthly');
+    setEditDescription(booking.description || '');
 
     if (booking.paymentDueDate) {
       const date = new Date(booking.paymentDueDate);
@@ -330,6 +349,16 @@ export default function BookingsPage() {
       setEditPaymentDueDate(`${yyyy}-${mm}-${dd}`);
     } else {
       setEditPaymentDueDate('');
+    }
+
+    if (booking.startDate) {
+      const date = new Date(booking.startDate);
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      setEditStartDate(`${yyyy}-${mm}-${dd}`);
+    } else {
+      setEditStartDate('');
     }
   };
 
@@ -582,15 +611,40 @@ export default function BookingsPage() {
                 )}
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Service / Plan Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Daily Hatchback Clean"
+                    value={newServiceName}
+                    onChange={(e) => setNewServiceName(e.target.value)}
+                    className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Plan Type</label>
+                  <select
+                    value={newServiceType}
+                    onChange={(e) => setNewServiceType(e.target.value)}
+                    className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="once">Once</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Service / Plan Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Daily Hatchback Clean"
-                  value={newServiceName}
-                  onChange={(e) => setNewServiceName(e.target.value)}
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Plan Description</label>
+                <textarea
+                  placeholder="Plan details / schedule / frequency description..."
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
                   className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                  rows={2}
                 />
               </div>
 
@@ -724,6 +778,49 @@ export default function BookingsPage() {
                     type="text"
                     value={editVehicleReg}
                     onChange={(e) => setEditVehicleReg(e.target.value)}
+                    className="w-full p-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Plan / Service Name</label>
+                  <input
+                    type="text"
+                    value={editServiceName}
+                    onChange={(e) => setEditServiceName(e.target.value)}
+                    className="w-full p-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Plan Type</label>
+                  <select
+                    value={editServiceType}
+                    onChange={(e) => setEditServiceType(e.target.value)}
+                    className="w-full p-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="once">Once</option>
+                  </select>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Plan Description</label>
+                  <textarea
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    className="w-full p-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                    rows={2}
+                    placeholder="Plan details / schedule / frequency description..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={editStartDate}
+                    onChange={(e) => setEditStartDate(e.target.value)}
                     className="w-full p-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
                   />
                 </div>

@@ -10,6 +10,7 @@ import {
   getUsersInCommunity,
   checkAndFlagOverdueInvoices,
 } from '@/lib/db-helpers';
+import { getMillis } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -126,8 +127,9 @@ export async function GET(
 
     payments.forEach((p) => {
       if (p.status === 'pending_manual_verify') pendingPayments++;
-      if (p.adminVerified === true && p.createdAt >= startOfMonth.getTime()) {
-        monthlyRevenue += p.amount || 0;
+      const createdAtMillis = getMillis(p.createdAt);
+      if (p.adminVerified === true && createdAtMillis >= startOfMonth.getTime()) {
+        monthlyRevenue += Number(p.amount) || 0;
       }
     });
 

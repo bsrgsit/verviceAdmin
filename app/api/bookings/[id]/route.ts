@@ -39,6 +39,9 @@ export async function PATCH(
     if (body.paymentStatus !== undefined) updates.paymentStatus = body.paymentStatus;
     if (body.vehicleReg !== undefined) updates.vehicleReg = body.vehicleReg;
     if (body.vehicleName !== undefined) updates.vehicleName = body.vehicleName;
+    if (body.serviceName !== undefined) updates.serviceName = body.serviceName;
+    if (body.serviceType !== undefined) updates.serviceType = body.serviceType;
+    if (body.description !== undefined) updates.description = body.description;
     if (body.cancellationRequest !== undefined) updates.cancellationRequest = body.cancellationRequest;
 
     if (Object.keys(updates).length === 0) {

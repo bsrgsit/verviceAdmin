@@ -501,7 +501,7 @@ export default function CommunityDetailPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm text-gray-700">{booking.planName || booking.plan || 'N/A'}</span>
+                          <span className="text-sm text-gray-700">{booking.serviceName || booking.planName || booking.plan || 'N/A'}</span>
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${

@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { userId, vehicleName, vehicleReg, serviceName, price, startDate, paymentDueDate } = body;
+    const { userId, vehicleName, vehicleReg, serviceName, serviceType, description, price, startDate, paymentDueDate } = body;
 
     if (!userId || !vehicleReg || !serviceName || price === undefined) {
       return NextResponse.json(
@@ -92,6 +92,8 @@ export async function POST(request: NextRequest) {
       vehicleName: vehicleName || 'Unknown Vehicle',
       vehicleReg,
       serviceName,
+      serviceType: serviceType || 'monthly',
+      description: description || '',
       price: Number(price),
       status: 'active',
       paymentStatus: 'unpaid',
