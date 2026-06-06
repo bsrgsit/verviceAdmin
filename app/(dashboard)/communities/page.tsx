@@ -11,6 +11,7 @@ import {
   Building2,
   Users,
   ArrowRight,
+  Trash2,
 } from 'lucide-react';
 
 interface Community {
@@ -98,6 +99,24 @@ export default function CommunitiesPage() {
     setShowForm(true);
   };
 
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete the community "${name}"?`)) return;
+    try {
+      const res = await fetch(`/api/communities/${id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to delete community');
+      } else {
+        await fetchCommunities();
+      }
+    } catch (error) {
+      console.error('Failed to delete community:', error);
+      alert('An error occurred while deleting the community');
+    }
+  };
+
   const filteredCommunities = communities.filter((c) => {
     if (!search) return true;
     const s = search.toLowerCase();
@@ -165,9 +184,17 @@ export default function CommunitiesPage() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={(e) => { e.stopPropagation(); handleEdit(community); }}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition"
+                    title="Edit"
                   >
                     <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDelete(community.id, community.name); }}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-lg transition"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                   <ArrowRight className="w-4 h-4 text-gray-400" />
                 </div>

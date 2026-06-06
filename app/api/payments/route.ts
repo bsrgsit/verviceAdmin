@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
+import { writeAuditLog } from '@/lib/admin-check';
 
 export async function GET() {
   try {
@@ -46,6 +47,50 @@ export async function GET() {
     return NextResponse.json(payments);
   } catch (error: any) {
     console.error('Payments fetch error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { userId, bookingId, amount, upiAppName, upiTransactionId, status, adminVerified, adminNotes, createdAt } = body;
+
+    if (!userId || !amount) {
+      return NextResponse.json(
+        { error: 'Missing required payment fields (userId, amount)' },
+        { status: 400 }
+      );
+    }
+
+    const db = getDb();
+    const now = Date.now();
+
+    const newPayment = {
+      userId,
+      bookingId: bookingId || '',
+      amount: Number(amount),
+      upiAppName: upiAppName || 'Manual Collection',
+      upiTransactionId: upiTransactionId || '',
+      status: status || 'pending_manual_verify',
+      adminVerified: adminVerified === undefined ? false : !!adminVerified,
+      adminNotes: adminNotes || '',
+      createdAt: createdAt ? Number(createdAt) : now,
+    };
+
+    const docRef = await db.collection('payments').add(newPayment);
+
+    await writeAuditLog(
+      'admin',
+      'payment_created',
+      docRef.id,
+      'payment',
+      `Recorded manual payment of ${amount} INR for user ${userId}`
+    );
+
+    return NextResponse.json({ id: docRef.id, ...newPayment }, { status: 201 });
+  } catch (error: any) {
+    console.error('Payment create error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

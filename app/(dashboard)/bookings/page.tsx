@@ -11,8 +11,27 @@ import {
   Eye,
   AlertTriangle,
   CheckCircle2,
+  Trash2,
+  Plus,
+  Clock,
+  Calendar,
 } from 'lucide-react';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+
+interface Vehicle {
+  registrationNumber: string;
+  type: string;
+  make: string;
+  model: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  community: string;
+  vehicles: Vehicle[];
+}
 
 interface Booking {
   id: string;
@@ -39,14 +58,18 @@ interface Booking {
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [search, setSearch] = useState('');
   
-  // Modal State
+  // Modals state
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  
+  // Edit Form State
   const [notes, setNotes] = useState('');
   const [editPrice, setEditPrice] = useState(0);
   const [editStatus, setEditStatus] = useState('');
@@ -54,8 +77,17 @@ export default function BookingsPage() {
   const [editVehicleName, setEditVehicleName] = useState('');
   const [editVehicleReg, setEditVehicleReg] = useState('');
 
+  // Create Form State
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedVehicleReg, setSelectedVehicleReg] = useState('');
+  const [newServiceName, setNewServiceName] = useState('');
+  const [newPrice, setNewPrice] = useState('');
+  const [newStartDate, setNewStartDate] = useState('');
+  const [newDueDate, setNewDueDate] = useState('');
+
   useEffect(() => {
     fetchBookings();
+    fetchUsers();
   }, []);
 
   const fetchBookings = async () => {
@@ -68,6 +100,54 @@ export default function BookingsPage() {
       console.error('Failed to fetch bookings:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/users');
+      const data = await res.json();
+      if (Array.isArray(data)) setUsers(data);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const handleCreateBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserId || !selectedVehicleReg || !newServiceName || !newPrice) return;
+    setProcessing('create');
+    try {
+      const user = users.find((u) => u.id === selectedUserId);
+      const vehicle = user?.vehicles?.find((v) => v.registrationNumber === selectedVehicleReg);
+      const vehicleName = vehicle ? `${vehicle.make} ${vehicle.model}` : 'Unknown Vehicle';
+
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedUserId,
+          vehicleName,
+          vehicleReg: selectedVehicleReg,
+          serviceName: newServiceName,
+          price: Number(newPrice),
+          startDate: newStartDate ? new Date(newStartDate).getTime() : Date.now(),
+          paymentDueDate: newDueDate ? new Date(newDueDate).getTime() : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to create booking');
+      } else {
+        setShowCreateModal(false);
+        resetCreateForm();
+        await fetchBookings();
+      }
+    } catch (error) {
+      console.error('Failed to create booking:', error);
+      alert('An error occurred during booking creation');
+    } finally {
+      setProcessing(null);
     }
   };
 
@@ -152,6 +232,37 @@ export default function BookingsPage() {
     }
   };
 
+  const handleDeleteBooking = async (bookingId: string) => {
+    if (!confirm('Are you sure you want to delete this booking subscription? This cannot be undone.')) return;
+    setProcessing(bookingId);
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to delete booking');
+      } else {
+        setSelectedBooking(null);
+        await fetchBookings();
+      }
+    } catch (error) {
+      console.error('Failed to delete booking:', error);
+      alert('An error occurred during booking deletion');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const resetCreateForm = () => {
+    setSelectedUserId('');
+    setSelectedVehicleReg('');
+    setNewServiceName('');
+    setNewPrice('');
+    setNewStartDate('');
+    setNewDueDate('');
+  };
+
   const filteredBookings = bookings.filter((b) => {
     if (statusFilter !== 'all' && b.status !== statusFilter) return false;
     if (paymentFilter !== 'all' && b.paymentStatus !== paymentFilter) return false;
@@ -205,11 +316,28 @@ export default function BookingsPage() {
     }
   };
 
+  // Selected User's Vehicles list for Add form dropdown
+  const activeUser = users.find((u) => u.id === selectedUserId);
+  const activeUserVehicles = activeUser?.vehicles || [];
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
-        <p className="text-gray-500">{bookings.length} total bookings</p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
+          <p className="text-gray-500">{bookings.length} total bookings</p>
+        </div>
+        <button
+          onClick={() => {
+            resetCreateForm();
+            setShowCreateModal(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm"
+        >
+          <Plus className="w-4 h-4" />
+          Add Booking
+        </button>
       </div>
 
       {/* Filters */}
@@ -305,7 +433,7 @@ export default function BookingsPage() {
                     </td>
                     <td className="px-4 py-3">
                       {booking.cancellationRequest?.status === 'pending' ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 animate-pulse">
                           Cancellation Pending
                         </span>
                       ) : (
@@ -326,39 +454,19 @@ export default function BookingsPage() {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => openDetailsModal(booking)}
-                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                          title="View & Edit Details"
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition"
+                          title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        {booking.status === 'active' && (
-                          <button
-                            onClick={() => handleSuspend(booking.id)}
-                            disabled={processing === booking.id}
-                            className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition disabled:opacity-50"
-                            title="Suspend"
-                          >
-                            {processing === booking.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Pause className="w-4 h-4" />
-                            )}
-                          </button>
-                        )}
-                        {booking.status === 'suspended' && (
-                          <button
-                            onClick={() => handleReactivate(booking.id)}
-                            disabled={processing === booking.id}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition disabled:opacity-50"
-                            title="Reactivate"
-                          >
-                            {processing === booking.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Play className="w-4 h-4" />
-                            )}
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDeleteBooking(booking.id)}
+                          disabled={processing === booking.id}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-lg transition"
+                          title="Delete Booking"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -366,6 +474,119 @@ export default function BookingsPage() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Booking Create Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <form onSubmit={handleCreateBooking} className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900">Add New Subscription Booking</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Select User</label>
+                <select
+                  required
+                  value={selectedUserId}
+                  onChange={(e) => {
+                    setSelectedUserId(e.target.value);
+                    setSelectedVehicleReg('');
+                  }}
+                  className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                >
+                  <option value="">Choose a user...</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.phoneNumber})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Select Vehicle</label>
+                <select
+                  required
+                  disabled={!selectedUserId}
+                  value={selectedVehicleReg}
+                  onChange={(e) => setSelectedVehicleReg(e.target.value)}
+                  className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none disabled:bg-gray-100"
+                >
+                  <option value="">Choose vehicle...</option>
+                  {activeUserVehicles.map((v) => (
+                    <option key={v.registrationNumber} value={v.registrationNumber}>
+                      {v.registrationNumber} - {v.make} {v.model} ({v.type})
+                    </option>
+                  ))}
+                </select>
+                {selectedUserId && activeUserVehicles.length === 0 && (
+                  <p className="text-xs text-red-500 mt-1">This user has no registered vehicles. Add a vehicle first.</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Service / Plan Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Daily Hatchback Clean"
+                  value={newServiceName}
+                  onChange={(e) => setNewServiceName(e.target.value)}
+                  className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Price (INR/mo)</label>
+                <input
+                  type="number"
+                  required
+                  placeholder="e.g. 500"
+                  value={newPrice}
+                  onChange={(e) => setNewPrice(e.target.value)}
+                  className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={newStartDate}
+                    onChange={(e) => setNewStartDate(e.target.value)}
+                    className="w-full p-2.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Payment Due Date</label>
+                  <input
+                    type="date"
+                    value={newDueDate}
+                    onChange={(e) => setNewDueDate(e.target.value)}
+                    className="w-full p-2.5 border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-green-500 outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={processing === 'create' || !selectedVehicleReg}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 text-sm font-medium disabled:opacity-50"
+              >
+                {processing === 'create' && <Loader2 className="w-4 h-4 animate-spin" />}
+                Create Booking
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -403,7 +624,7 @@ export default function BookingsPage() {
                       onClick={() => handleApprovalCancellation('approved')}
                       className="px-4 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition flex items-center gap-1"
                     >
-                      {processing === selectedBooking.id && <Loader2 className="w-3 h-3 animate-spin" />}
+                      {processing === selectedBooking.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       Approve & Cancel Subscription
                     </button>
                     <button
@@ -523,23 +744,34 @@ export default function BookingsPage() {
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+            <div className="p-6 border-t border-gray-100 flex justify-between gap-3">
               <button
                 type="button"
-                onClick={() => setSelectedBooking(null)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
+                onClick={() => handleDeleteBooking(selectedBooking.id)}
                 disabled={processing === selectedBooking.id}
-                onClick={handleSaveChanges}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+                className="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition text-sm font-medium flex items-center gap-1.5"
               >
-                {processing === selectedBooking.id && <Loader2 className="w-4 h-4 animate-spin" />}
-                Save Changes
+                <Trash2 className="w-4 h-4" /> Delete Booking
               </button>
+              
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedBooking(null)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={processing === selectedBooking.id}
+                  onClick={handleSaveChanges}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2 text-sm font-medium"
+                >
+                  {processing === selectedBooking.id && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Save Changes
+                </button>
+              </div>
             </div>
           </div>
         </div>
