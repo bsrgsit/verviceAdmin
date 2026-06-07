@@ -43,6 +43,16 @@ export async function PATCH(
     if (body.serviceType !== undefined) updates.serviceType = body.serviceType;
     if (body.description !== undefined) updates.description = body.description;
     if (body.cancellationRequest !== undefined) updates.cancellationRequest = body.cancellationRequest;
+    
+    // Partner & Cleaning Presence
+    if (body.partnerId !== undefined) updates.partnerId = body.partnerId;
+    if (body.partnerName !== undefined) updates.partnerName = body.partnerName;
+    if (body.partnerPhone !== undefined) updates.partnerPhone = body.partnerPhone;
+    if (body.partnerRating !== undefined) updates.partnerRating = body.partnerRating !== null ? Number(body.partnerRating) : 4.8;
+    if (body.partnerStatus !== undefined) updates.partnerStatus = body.partnerStatus;
+    if (body.partnerEnteredAt !== undefined) updates.partnerEnteredAt = body.partnerEnteredAt !== null ? Number(body.partnerEnteredAt) : 0;
+    if (body.lastCleanedDate !== undefined) updates.lastCleanedDate = body.lastCleanedDate;
+    if (body.lastCleanedAt !== undefined) updates.lastCleanedAt = body.lastCleanedAt !== null ? Number(body.lastCleanedAt) : 0;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });

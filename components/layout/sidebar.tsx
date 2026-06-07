@@ -11,6 +11,7 @@ import {
   History,
   Car,
   Receipt,
+  UserCheck,
 } from 'lucide-react';
 
 const navItems = [
@@ -20,6 +21,7 @@ const navItems = [
   { href: '/invoices', label: 'Invoices', icon: Receipt },
   { href: '/bookings', label: 'Bookings', icon: FileText },
   { href: '/users', label: 'Users', icon: Users },
+  { href: '/partners', label: 'Partners', icon: UserCheck },
   { href: '/audit-log', label: 'Audit Log', icon: History },
 ];
 

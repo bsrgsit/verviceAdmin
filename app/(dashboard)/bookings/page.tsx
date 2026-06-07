@@ -56,11 +56,21 @@ interface Booking {
     reason: string;
     requestedAt: number;
   };
+  partnerId?: string;
+  partnerName?: string;
+  partnerPhone?: string;
+  partnerRating?: number;
+  partnerStatus?: string;
+  partnerEnteredAt?: number;
+  lastCleanedDate?: string;
+  lastCleanedAt?: number;
 }
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [partners, setPartners] = useState<any[]>([]);
+  const [selectedBookingIds, setSelectedBookingIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -97,6 +107,14 @@ export default function BookingsPage() {
   const [editDescription, setEditDescription] = useState('');
   const [editStartDate, setEditStartDate] = useState('');
 
+  // Partner Assignment State
+  const [editPartnerId, setEditPartnerId] = useState('');
+  const [editPartnerName, setEditPartnerName] = useState('');
+  const [editPartnerPhone, setEditPartnerPhone] = useState('');
+  const [editPartnerRating, setEditPartnerRating] = useState(4.8);
+  const [editPartnerStatus, setEditPartnerStatus] = useState('not_entered');
+  const [editPartnerEnteredAt, setEditPartnerEnteredAt] = useState(0);
+
   // Create Form State
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedVehicleReg, setSelectedVehicleReg] = useState('');
@@ -110,7 +128,18 @@ export default function BookingsPage() {
   useEffect(() => {
     fetchBookings();
     fetchUsers();
+    fetchPartners();
   }, []);
+
+  const fetchPartners = async () => {
+    try {
+      const res = await fetch('/api/partners');
+      const data = await res.json();
+      if (Array.isArray(data)) setPartners(data);
+    } catch (error) {
+      console.error('Failed to fetch partners:', error);
+    }
+  };
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -220,6 +249,12 @@ export default function BookingsPage() {
           description: editDescription,
           startDate: editStartDate ? new Date(editStartDate).getTime() : 0,
           paymentDueDate: editPaymentDueDate ? new Date(editPaymentDueDate).getTime() : 0,
+          partnerId: editPartnerId,
+          partnerName: editPartnerName,
+          partnerPhone: editPartnerPhone,
+          partnerRating: Number(editPartnerRating),
+          partnerStatus: editPartnerStatus,
+          partnerEnteredAt: Number(editPartnerEnteredAt),
         }),
       });
 
@@ -360,6 +395,13 @@ export default function BookingsPage() {
     } else {
       setEditStartDate('');
     }
+
+    setEditPartnerId(booking.partnerId || '');
+    setEditPartnerName(booking.partnerName || '');
+    setEditPartnerPhone(booking.partnerPhone || '');
+    setEditPartnerRating(booking.partnerRating || 4.8);
+    setEditPartnerStatus(booking.partnerStatus || 'not_entered');
+    setEditPartnerEnteredAt(booking.partnerEnteredAt || 0);
   };
 
   // Selected User's Vehicles list for Add form dropdown
@@ -458,24 +500,133 @@ export default function BookingsPage() {
           <p className="text-gray-500">No bookings found</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">User</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Vehicle</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Service</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Price</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Payment</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Due Date</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
+        <div className="space-y-4">
+          {selectedBookingIds.length > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center gap-2 text-green-800 text-sm font-semibold">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                <span>{selectedBookingIds.length} bookings selected</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <select
+                  onChange={async (e) => {
+                    const pId = e.target.value;
+                    if (!pId) return;
+                    const isAssign = pId !== 'none';
+                    if (confirm(`${isAssign ? 'Assign selected partner to' : 'Unassign partner from'} ${selectedBookingIds.length} bookings?`)) {
+                      setProcessing('bulk-assign');
+                      try {
+                        const res = await fetch('/api/bookings/bulk-assign', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ bookingIds: selectedBookingIds, partnerId: isAssign ? pId : '' }),
+                        });
+                        if (!res.ok) {
+                          const data = await res.json();
+                          alert(data.error || 'Failed to bulk update');
+                        } else {
+                          setSelectedBookingIds([]);
+                          await fetchBookings();
+                        }
+                      } catch (err) {
+                        console.error(err);
+                      } finally {
+                        setProcessing(null);
+                      }
+                    }
+                    e.target.value = '';
+                  }}
+                  className="p-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-green-500 outline-none cursor-pointer"
+                >
+                  <option value="">Bulk Assign Partner...</option>
+                  <option value="none">Unassign Partner</option>
+                  {partners.filter(p => p.status === 'active').map(p => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.phoneNumber})</option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={async () => {
+                    if (confirm(`Mark today's cleaning completed for ${selectedBookingIds.length} bookings?`)) {
+                      setProcessing('bulk-complete');
+                      try {
+                        await Promise.all(selectedBookingIds.map(async (bookingId) => {
+                          try {
+                            await fetch(`/api/bookings/${bookingId}/complete-cleaning`, { method: 'POST' });
+                          } catch (err) {
+                            console.error(`Failed to complete cleaning for ${bookingId}:`, err);
+                          }
+                        }));
+                        setSelectedBookingIds([]);
+                        await fetchBookings();
+                      } finally {
+                        setProcessing(null);
+                      }
+                    }
+                  }}
+                  className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg transition"
+                >
+                  Mark Cleaned Today
+                </button>
+
+                <button
+                  onClick={() => setSelectedBookingIds([])}
+                  className="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg transition"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left w-10">
+                      <input
+                        type="checkbox"
+                        checked={paginatedBookings.length > 0 && paginatedBookings.every(b => selectedBookingIds.includes(b.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            const pageIds = paginatedBookings.map(b => b.id);
+                            setSelectedBookingIds(prev => Array.from(new Set([...prev, ...pageIds])));
+                          } else {
+                            const pageIds = paginatedBookings.map(b => b.id);
+                            setSelectedBookingIds(prev => prev.filter(id => !pageIds.includes(id)));
+                          }
+                        }}
+                        className="rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                      />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">User</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Vehicle</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Service</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Price</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Payment</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Due Date</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
               <tbody className="divide-y divide-gray-100">
                 {paginatedBookings.map((booking) => (
                   <tr key={booking.id} className="hover:bg-gray-50 transition">
+                    <td className="px-4 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedBookingIds.includes(booking.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedBookingIds(prev => [...prev, booking.id]);
+                          } else {
+                            setSelectedBookingIds(prev => prev.filter(id => id !== booking.id));
+                          }
+                        }}
+                        className="rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900 text-sm">{booking.userName}</p>
                       <p className="text-xs text-gray-500">{booking.userPhone}</p>
@@ -562,7 +713,8 @@ export default function BookingsPage() {
             </div>
           )}
         </div>
-      )}
+      </div>
+    )}
 
       {/* Booking Create Modal */}
       {showCreateModal && (
@@ -864,6 +1016,86 @@ export default function BookingsPage() {
                     onChange={(e) => setEditPaymentDueDate(e.target.value)}
                     className="w-full p-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none"
                   />
+                </div>
+
+                <div className="col-span-2 border-t border-gray-100 pt-4">
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Partner & Presence</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Assigned Cleaning Partner</label>
+                      <select
+                        value={editPartnerId}
+                        onChange={(e) => {
+                          const pId = e.target.value;
+                          setEditPartnerId(pId);
+                          if (pId) {
+                            const partner = partners.find(p => p.id === pId);
+                            setEditPartnerName(partner ? partner.name : '');
+                            setEditPartnerPhone(partner ? partner.phoneNumber : '');
+                            setEditPartnerRating(partner ? partner.rating : 4.8);
+                            setEditPartnerStatus(partner ? (partner.enteredCommunity ? 'entered' : 'not_entered') : 'not_entered');
+                            setEditPartnerEnteredAt(partner ? (partner.enteredAt || 0) : 0);
+                          } else {
+                            setEditPartnerName('');
+                            setEditPartnerPhone('');
+                            setEditPartnerRating(4.8);
+                            setEditPartnerStatus('not_entered');
+                            setEditPartnerEnteredAt(0);
+                          }
+                        }}
+                        className="w-full p-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 outline-none cursor-pointer"
+                      >
+                        <option value="">No Partner Assigned</option>
+                        {partners
+                          .filter(p => p.communities && p.communities.includes(selectedBooking.community) && p.status === 'active')
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>{p.name} ({p.phoneNumber})</option>
+                          ))
+                        }
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Today's Washing Log</label>
+                      <div className="flex items-center gap-3 mt-1.5">
+                        {selectedBooking.lastCleanedDate === new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) ? (
+                          <span className="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">
+                            🟢 Completed Today
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={processing === selectedBooking.id}
+                            onClick={async () => {
+                              setProcessing(selectedBooking.id);
+                              try {
+                                const res = await fetch(`/api/bookings/${selectedBooking.id}/complete-cleaning`, { method: 'POST' });
+                                if (res.ok) {
+                                  const updated = await res.json();
+                                  setSelectedBooking({
+                                    ...selectedBooking,
+                                    lastCleanedDate: updated.lastCleanedDate,
+                                    lastCleanedAt: updated.lastCleanedAt
+                                  });
+                                  await fetchBookings();
+                                } else {
+                                  const data = await res.json();
+                                  alert(data.error || 'Failed to complete wash');
+                                }
+                              } catch (e) {
+                                console.error(e);
+                              } finally {
+                                setProcessing(null);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg transition"
+                          >
+                            Mark Cleaned Today
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
