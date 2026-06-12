@@ -12,6 +12,8 @@ import {
   Car,
   Receipt,
   UserCheck,
+  Battery,
+  HelpCircle,
 } from 'lucide-react';
 
 const navItems = [
@@ -22,6 +24,9 @@ const navItems = [
   { href: '/bookings', label: 'Bookings', icon: FileText },
   { href: '/users', label: 'Users', icon: Users },
   { href: '/partners', label: 'Partners', icon: UserCheck },
+  { href: '/battery-requests', label: 'Battery Requests', icon: Battery },
+  { href: '/driver-requests', label: 'Driver Requests', icon: Car },
+  { href: '/support-tickets', label: 'Support Tickets', icon: HelpCircle },
   { href: '/audit-log', label: 'Audit Log', icon: History },
 ];
 

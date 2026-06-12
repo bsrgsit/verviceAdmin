@@ -13,6 +13,9 @@ import {
   CheckCircle2,
   XCircle,
   Building2,
+  BatteryCharging,
+  HelpCircle,
+  Car,
 } from 'lucide-react';
 import { formatCurrency, timeAgo } from '@/lib/utils';
 
@@ -22,6 +25,9 @@ interface DashboardStats {
   pendingPayments: number;
   overdueBookings: number;
   monthlyRevenue: number;
+  pendingBatteryRequests: number;
+  pendingDriverRequests: number;
+  openSupportTickets: number;
 }
 
 interface AuditEntry {
@@ -95,6 +101,27 @@ export default function DashboardPage() {
       href: '/bookings',
     },
     {
+      label: 'Battery Requests',
+      value: stats?.pendingBatteryRequests || 0,
+      icon: BatteryCharging,
+      color: 'bg-yellow-500',
+      href: '/battery-requests',
+    },
+    {
+      label: 'Driver Requests',
+      value: stats?.pendingDriverRequests || 0,
+      icon: Car,
+      color: 'bg-cyan-500',
+      href: '/driver-requests',
+    },
+    {
+      label: 'Support Tickets',
+      value: stats?.openSupportTickets || 0,
+      icon: HelpCircle,
+      color: 'bg-rose-500',
+      href: '/support-tickets',
+    },
+    {
       label: 'Monthly Revenue',
       value: formatCurrency(stats?.monthlyRevenue || 0),
       icon: TrendingUp,
@@ -106,7 +133,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card) => (
           <Link
             key={card.label}

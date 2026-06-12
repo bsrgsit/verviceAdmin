@@ -482,6 +482,7 @@ export default function CommunityDetailPage() {
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">User</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Community</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Vehicle</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Plan</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
@@ -494,6 +495,9 @@ export default function CommunityDetailPage() {
                         <td className="px-4 py-3">
                           <p className="font-medium text-gray-900 text-sm">{booking.userName}</p>
                           <p className="text-xs text-gray-500">{booking.userPhone}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {booking.community || 'N/A'}
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-sm text-gray-700">

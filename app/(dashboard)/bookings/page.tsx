@@ -75,6 +75,7 @@ export default function BookingsPage() {
   const [processing, setProcessing] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [communityFilter, setCommunityFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -89,7 +90,7 @@ export default function BookingsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, statusFilter, paymentFilter]);
+  }, [debouncedSearch, statusFilter, paymentFilter, communityFilter]);
   
   // Modals state
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -328,15 +329,19 @@ export default function BookingsPage() {
     setNewDueDate('');
   };
 
+  const uniqueCommunities = Array.from(new Set(bookings.map((b) => b.community).filter(Boolean)));
+
   const filteredBookings = bookings.filter((b) => {
     if (statusFilter !== 'all' && b.status !== statusFilter) return false;
     if (paymentFilter !== 'all' && b.paymentStatus !== paymentFilter) return false;
+    if (communityFilter !== 'all' && b.community !== communityFilter) return false;
     if (debouncedSearch) {
       const s = debouncedSearch.toLowerCase();
       return (
         b.userName?.toLowerCase().includes(s) ||
         b.vehicleReg?.toLowerCase().includes(s) ||
-        b.serviceName?.toLowerCase().includes(s)
+        b.serviceName?.toLowerCase().includes(s) ||
+        b.community?.toLowerCase().includes(s)
       );
     }
     return true;
@@ -462,6 +467,20 @@ export default function BookingsPage() {
               {p === 'pending_verification' ? 'Pending Verif.' : p.charAt(0).toUpperCase() + p.slice(1)}
             </button>
           ))}
+        </div>
+
+        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1">
+          <span className="text-xs text-gray-500 px-2">Community:</span>
+          <select
+            value={communityFilter}
+            onChange={(e) => setCommunityFilter(e.target.value)}
+            className="p-1 px-2 bg-white border-0 text-xs font-medium rounded-md focus:ring-0 focus:outline-none cursor-pointer text-gray-700"
+          >
+            <option value="all">All Communities</option>
+            {uniqueCommunities.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </div>
 
         <div className="flex-1 relative">
@@ -601,6 +620,7 @@ export default function BookingsPage() {
                       />
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">User</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Community</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Vehicle</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Service</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Price</th>
@@ -630,6 +650,9 @@ export default function BookingsPage() {
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900 text-sm">{booking.userName}</p>
                       <p className="text-xs text-gray-500">{booking.userPhone}</p>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 font-medium">
+                      {booking.community || 'N/A'}
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-sm text-gray-900">{booking.vehicleName}</p>
@@ -913,6 +936,11 @@ export default function BookingsPage() {
                   <p className="text-xs text-gray-500">Phone</p>
                   <p className="font-medium text-gray-900 text-sm">{selectedBooking.userPhone}</p>
                 </div>
+                <div>
+                  <p className="text-xs text-gray-500">Community</p>
+                  <p className="font-medium text-green-700 text-sm font-semibold">{selectedBooking.community || 'N/A'}</p>
+                </div>
+                <div>{/* spacer */}</div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Vehicle Name</label>
