@@ -27,7 +27,23 @@ export async function PATCH(
     const ticketData = doc.data() || {};
 
     // Check community access for community admins
-    if (!await canAccessUser(admin, ticketData.userId)) {
+    let community = 'N/A';
+    if (ticketData.userId) {
+      const userDoc = await db.collection('users').doc(ticketData.userId).get();
+      if (userDoc.exists) {
+        community = userDoc.data()?.community || 'N/A';
+      } else if (ticketData.userPhone) {
+        const phoneSnap = await db.collection('users')
+          .where('phoneNumber', '==', ticketData.userPhone)
+          .limit(1)
+          .get();
+        if (!phoneSnap.empty) {
+          community = phoneSnap.docs[0].data()?.community || 'N/A';
+        }
+      }
+    }
+
+    if (!enforceSuperAdmin(admin) && !admin.assignedCommunities.includes(community)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -74,7 +90,23 @@ export async function DELETE(
 
     const ticketData = doc.data() || {};
 
-    if (!await canAccessUser(admin, ticketData.userId)) {
+    let community = 'N/A';
+    if (ticketData.userId) {
+      const userDoc = await db.collection('users').doc(ticketData.userId).get();
+      if (userDoc.exists) {
+        community = userDoc.data()?.community || 'N/A';
+      } else if (ticketData.userPhone) {
+        const phoneSnap = await db.collection('users')
+          .where('phoneNumber', '==', ticketData.userPhone)
+          .limit(1)
+          .get();
+        if (!phoneSnap.empty) {
+          community = phoneSnap.docs[0].data()?.community || 'N/A';
+        }
+      }
+    }
+
+    if (!enforceSuperAdmin(admin) && !admin.assignedCommunities.includes(community)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 

@@ -31,13 +31,42 @@ export async function GET() {
       });
     }
 
-    let tickets = snapshot.docs.map((doc) => {
+    // Collect phone numbers for users that weren't found by UID or don't have a community
+    const missingPhoneTickets = snapshot.docs.filter(doc => {
       const data = doc.data();
       const userData = userMap.get(data.userId);
+      return (!userData || !userData.community) && data.userPhone;
+    });
+
+    const fallbackPhones = Array.from(new Set(missingPhoneTickets.map(doc => doc.data().userPhone).filter(Boolean)));
+    const phoneMap = new Map<string, any>();
+
+    if (fallbackPhones.length > 0) {
+      // Query users collection by phoneNumber in chunks of 30 (Firestore in limits)
+      for (let i = 0; i < fallbackPhones.length; i += 30) {
+        const chunk = fallbackPhones.slice(i, i + 30);
+        const phoneSnap = await db.collection('users')
+          .where('phoneNumber', 'in', chunk)
+          .get();
+        phoneSnap.docs.forEach((userDoc) => {
+          const uData = userDoc.data();
+          if (uData && uData.phoneNumber) {
+            phoneMap.set(uData.phoneNumber, uData);
+          }
+        });
+      }
+    }
+
+    let tickets = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      const userData = userMap.get(data.userId) || (data.userPhone ? phoneMap.get(data.userPhone) : null);
       return {
         id: doc.id,
         ...data,
-        community: userData?.community || 'N/A',
+        userName: userData?.name || data.userName || 'Unknown User',
+        userPhone: userData?.phoneNumber || data.userPhone || '',
+        userEmail: userData?.email || data.userEmail || '',
+        community: userData?.community || data.community || 'N/A',
       };
     });
 

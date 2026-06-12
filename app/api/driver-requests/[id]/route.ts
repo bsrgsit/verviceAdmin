@@ -27,7 +27,8 @@ export async function PATCH(
     const requestData = doc.data() || {};
 
     // Check community access for community admins
-    if (!await canAccessUser(admin, requestData.userId)) {
+    const community = requestData.community || requestData.communityId || 'N/A';
+    if (!enforceSuperAdmin(admin) && !admin.assignedCommunities.includes(community)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -77,7 +78,8 @@ export async function DELETE(
 
     const requestData = doc.data() || {};
 
-    if (!await canAccessUser(admin, requestData.userId)) {
+    const community = requestData.community || requestData.communityId || 'N/A';
+    if (!enforceSuperAdmin(admin) && !admin.assignedCommunities.includes(community)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
