@@ -10,6 +10,7 @@ import {
   XCircle,
   AlertTriangle,
   LogIn,
+  Info,
 } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 
@@ -61,10 +62,43 @@ export default function AuditLogPage() {
   };
 
   const getActionIcon = (action: string) => {
-    if (action.includes('verified') || action.includes('login')) return <CheckCircle2 className="w-4 h-4 text-green-500" />;
-    if (action.includes('rejected') || action.includes('suspended') || action.includes('restricted')) return <XCircle className="w-4 h-4 text-red-500" />;
-    if (action.includes('reactivated') || action.includes('unrestricted')) return <CheckCircle2 className="w-4 h-4 text-blue-500" />;
-    return <AlertTriangle className="w-4 h-4 text-amber-500" />;
+    const act = action.toLowerCase();
+    
+    // Login / Session
+    if (act.includes('login')) {
+      return <LogIn className="w-4 h-4 text-green-500" />;
+    }
+    
+    // Deletions / Cancellations / Rejections / Restrictions
+    if (
+      act.includes('delete') || 
+      act.includes('remove') || 
+      act.includes('reject') || 
+      act.includes('suspend') || 
+      act.includes('restrict') || 
+      act.includes('cancel')
+    ) {
+      return <XCircle className="w-4 h-4 text-red-500" />;
+    }
+    
+    // Creations / Plus / Additions
+    if (act.includes('create') || act.includes('add') || act.includes('new')) {
+      return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+    }
+    
+    // Updates / Edits / Verifications / Activations
+    if (
+      act.includes('update') || 
+      act.includes('edit') || 
+      act.includes('verify') || 
+      act.includes('reactivate') || 
+      act.includes('unrestrict')
+    ) {
+      return <CheckCircle2 className="w-4 h-4 text-blue-500" />;
+    }
+    
+    // Fallback info icon (neutral gray)
+    return <Info className="w-4 h-4 text-gray-500" />;
   };
 
   const filteredEntries = entries.filter((e) => {
