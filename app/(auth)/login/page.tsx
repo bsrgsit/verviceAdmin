@@ -44,37 +44,37 @@ function LoginForm() {
 
   return (
     <div className="w-full max-w-md mx-auto p-6">
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+      <div className="premium-card p-8 bg-white">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-blue-500 rounded-2xl flex items-center justify-center mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mb-4 shadow-md shadow-emerald-950/10">
             <Car className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Vervice Admin</h1>
-          <p className="text-gray-500 text-sm mt-1">Sign in to your admin account</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Vervice Admin</h1>
+          <p className="text-slate-500 text-sm mt-1 font-medium">Sign in to your admin account</p>
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <p className="text-red-700 text-sm">{error}</p>
+          <div className="mb-6 p-4 bg-rose-50 border border-rose-200/50 rounded-xl flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-500 flex-shrink-0" />
+            <p className="text-rose-700 text-xs font-semibold">{error}</p>
           </div>
         )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
               Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50/20 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
                 placeholder="admin@vervice.com"
                 required
               />
@@ -82,16 +82,16 @@ function LoginForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50/20 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
                 placeholder="Enter your password"
                 required
               />
@@ -101,11 +101,11 @@ function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold rounded-xl hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+            className="premium-button-primary w-full py-3 flex items-center justify-center gap-2 font-bold tracking-wide"
           >
             {loading ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
                 Signing in...
               </>
             ) : (
@@ -114,7 +114,7 @@ function LoginForm() {
           </button>
         </form>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-6">
           Authorized personnel only
         </p>
       </div>
