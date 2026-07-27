@@ -23,6 +23,8 @@ import {
   HelpCircle,
   History,
   Check,
+  Plus,
+  Zap,
 } from 'lucide-react';
 import { useCommunity } from '@/lib/community-context';
 import CommandPalette from '@/components/ui/command-palette';
@@ -40,16 +42,18 @@ interface SubMenuItem {
   label: string;
   icon: any;
   parentCategoryId: string;
+  description: string;
 }
 
 export default function TopNavigation() {
   const pathname = usePathname();
   const router = useRouter();
-  const { selectedCommunity, setSelectedCommunity, communities, isLoading, selectedCommunityObj } =
+  const { selectedCommunity, setSelectedCommunity, communities, selectedCommunityObj } =
     useCommunity();
 
   const [user, setUser] = useState<{ email: string; role: string } | null>(null);
   const [showCommunityDropdown, setShowCommunityDropdown] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -70,7 +74,7 @@ export default function TopNavigation() {
     router.refresh();
   };
 
-  // Define Layer 1 Primary Categories
+  // Define Layer 1 Primary Categories with Straightforward Labels
   const primaryCategories: PrimaryCategory[] = [
     {
       id: 'overview',
@@ -81,65 +85,65 @@ export default function TopNavigation() {
     },
     {
       id: 'operations',
-      label: 'Operations',
+      label: 'Services & Cleaning',
       icon: Building2,
       subRoutes: ['/communities', '/bookings', '/partners'],
-      defaultHref: '/communities',
+      defaultHref: '/bookings',
     },
     {
       id: 'residents',
-      label: 'Residents',
+      label: 'Residents & Vehicles',
       icon: Users,
       subRoutes: ['/users'],
       defaultHref: '/users',
     },
     {
       id: 'finance',
-      label: 'Finance',
+      label: 'Payments & Invoices',
       icon: CreditCard,
       subRoutes: ['/payments', '/invoices'],
       defaultHref: '/payments',
     },
     {
       id: 'services',
-      label: 'Services & Support',
+      label: 'Emergency & Requests',
       icon: Wrench,
       subRoutes: ['/battery-requests', '/driver-requests', '/support-tickets'],
       defaultHref: '/battery-requests',
     },
     {
       id: 'system',
-      label: 'System',
+      label: 'System & Audit',
       icon: ShieldCheck,
       subRoutes: ['/audit-log'],
       defaultHref: '/audit-log',
     },
   ];
 
-  // Define Layer 2 Sub-Menu Items
+  // Define Layer 2 Sub-Menu Items with Explanatory Descriptions
   const subMenuItems: SubMenuItem[] = [
     // Overview
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard, parentCategoryId: 'overview' },
+    { href: '/', label: 'Main Dashboard', icon: LayoutDashboard, parentCategoryId: 'overview', description: 'Real-time revenue, active bookings, & community metrics' },
 
     // Operations
-    { href: '/communities', label: 'Communities', icon: Building2, parentCategoryId: 'operations' },
-    { href: '/bookings', label: 'Bookings & Schedules', icon: FileText, parentCategoryId: 'operations' },
-    { href: '/partners', label: 'Partners & Cleaners', icon: UserCheck, parentCategoryId: 'operations' },
+    { href: '/bookings', label: 'Cleaning Schedules', icon: FileText, parentCategoryId: 'operations', description: 'Manage daily car cleaning bookings and active plans' },
+    { href: '/communities', label: 'Communities & Blocks', icon: Building2, parentCategoryId: 'operations', description: 'Gated societies, block structures, & flat counts' },
+    { href: '/partners', label: 'Cleaners & Staff', icon: UserCheck, parentCategoryId: 'operations', description: 'Assigned cleaners, attendance, & active gates' },
 
     // Residents
-    { href: '/users', label: 'Users & Residents', icon: Users, parentCategoryId: 'residents' },
+    { href: '/users', label: 'Resident Accounts', icon: Users, parentCategoryId: 'residents', description: 'Resident profiles, phone numbers, & vehicle assignments' },
 
     // Finance
-    { href: '/payments', label: 'Payments Log', icon: CreditCard, parentCategoryId: 'finance' },
-    { href: '/invoices', label: 'Invoices & Billing', icon: Receipt, parentCategoryId: 'finance' },
+    { href: '/payments', label: 'Payment Verifications', icon: CreditCard, parentCategoryId: 'finance', description: 'Review & verify manual UPI payments from residents' },
+    { href: '/invoices', label: 'Monthly Billing & Invoices', icon: Receipt, parentCategoryId: 'finance', description: 'Generate monthly invoices & track overdue balances' },
 
     // Services
-    { href: '/battery-requests', label: 'Battery Requests', icon: Battery, parentCategoryId: 'services' },
-    { href: '/driver-requests', label: 'Driver Requests', icon: Car, parentCategoryId: 'services' },
-    { href: '/support-tickets', label: 'Support Tickets', icon: HelpCircle, parentCategoryId: 'services' },
+    { href: '/battery-requests', label: 'Battery Jumpstart', icon: Battery, parentCategoryId: 'services', description: 'Urgent battery jumpstart & replacement requests' },
+    { href: '/driver-requests', label: 'Driver Hire', icon: Car, parentCategoryId: 'services', description: 'Driver assignment and booking requests' },
+    { href: '/support-tickets', label: 'Support Helpdesk', icon: HelpCircle, parentCategoryId: 'services', description: 'Resident support tickets & complaint logs' },
 
     // System
-    { href: '/audit-log', label: 'Audit Log', icon: History, parentCategoryId: 'system' },
+    { href: '/audit-log', label: 'Admin Audit Log', icon: History, parentCategoryId: 'system', description: 'Trace all admin actions, approvals, and system events' },
   ];
 
   // Resolve Active Layer 1 Primary Category based on current pathname
@@ -155,36 +159,45 @@ export default function TopNavigation() {
     (item) => item.parentCategoryId === activeCategory.id
   );
 
+  // Active sub-item for clarity description
+  const currentSubItem = subMenuItems.find(
+    (item) => item.href === '/' ? pathname === '/' : pathname === item.href || pathname?.startsWith(item.href + '/')
+  ) || activeSubMenuItems[0];
+
   return (
     <>
-      <header className="sticky top-0 z-40 shadow-sm">
-        {/* ── LAYER 1: Primary Header Bar (Dark Slate) ────────────────────────── */}
-        <div className="bg-slate-900 border-b border-slate-800 text-white px-4 md:px-8 py-2.5">
+      <header className="sticky top-0 z-40 shadow-md">
+        {/* ── LAYER 1: Primary Header Bar (Straightforward Dark Slate) ──────────── */}
+        <div className="bg-slate-950 border-b border-slate-800 text-white px-4 md:px-8 py-2.5">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
-            {/* Left: Brand Logo + Global Community Selector */}
-            <div className="flex items-center gap-5">
-              <Link href="/" className="flex items-center gap-2.5 group">
-                <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-md shadow-emerald-950/30 group-hover:scale-105 transition-transform">
+            {/* Left: Brand Logo + Global Community Scope Picker */}
+            <div className="flex items-center gap-4">
+              <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
+                <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-md shadow-emerald-950/40 group-hover:scale-105 transition-transform">
                   <Car className="w-5 h-5 text-white" />
                 </div>
                 <div className="hidden sm:block">
                   <span className="font-extrabold text-white text-base tracking-tight">Vervice</span>
                   <span className="text-[10px] font-bold text-emerald-400 block -mt-1 tracking-wider uppercase">
-                    Admin
+                    Admin Portal
                   </span>
                 </div>
               </Link>
 
-              {/* ── GLOBAL COMMUNITY SELECTOR DROPDOWN ── */}
+              {/* ── GLOBAL COMMUNITY SELECTOR (What society are you managing?) ── */}
               <div className="relative">
                 <button
                   type="button"
-                  onClick={() => setShowCommunityDropdown(!showCommunityDropdown)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 rounded-xl text-xs font-bold text-slate-100 transition-all shadow-sm"
+                  onClick={() => {
+                    setShowCommunityDropdown(!showCommunityDropdown);
+                    setShowQuickActions(false);
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-850 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-xs font-bold text-slate-100 transition-all shadow-sm"
+                  title="Switch target community scope"
                 >
-                  <span className="text-emerald-400 font-extrabold text-sm">🏢</span>
-                  <span className="max-w-[140px] sm:max-w-[180px] truncate">
+                  <span className="text-emerald-400 font-extrabold">🏢 Scope:</span>
+                  <span className="max-w-[130px] sm:max-w-[170px] truncate text-emerald-300 font-extrabold">
                     {selectedCommunity === 'ALL'
                       ? 'All Communities'
                       : selectedCommunityObj?.name || selectedCommunity}
@@ -195,12 +208,15 @@ export default function TopNavigation() {
                 {/* Dropdown Menu */}
                 {showCommunityDropdown && (
                   <div
-                    className="absolute left-0 mt-2 w-64 bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in duration-150"
+                    className="absolute left-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in duration-150"
                     onMouseLeave={() => setShowCommunityDropdown(false)}
                   >
-                    <div className="px-3 py-1.5 border-b border-slate-800">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        Select Scope
+                    <div className="px-3 py-2 border-b border-slate-800">
+                      <p className="text-[11px] font-bold text-white uppercase tracking-wider">
+                        Filter Portal by Community
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Select a society to scope all stats, bookings, & payments
                       </p>
                     </div>
 
@@ -210,21 +226,21 @@ export default function TopNavigation() {
                         setSelectedCommunity('ALL');
                         setShowCommunityDropdown(false);
                       }}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-left transition-colors ${
+                      className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-bold text-left transition-colors ${
                         selectedCommunity === 'ALL'
-                          ? 'bg-emerald-600/20 text-emerald-300 font-bold'
+                          ? 'bg-emerald-600/20 text-emerald-300'
                           : 'text-slate-300 hover:bg-slate-800'
                       }`}
                     >
                       <span className="flex items-center gap-2">
-                        <span>🌐</span> All Communities
+                        <span>🌐</span> View All Communities Combined
                       </span>
-                      {selectedCommunity === 'ALL' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                      {selectedCommunity === 'ALL' && <Check className="w-4 h-4 text-emerald-400" />}
                     </button>
 
-                    <div className="my-1 border-t border-slate-800/80"></div>
+                    <div className="my-1 border-t border-slate-800"></div>
 
-                    <div className="max-h-56 overflow-y-auto space-y-0.5">
+                    <div className="max-h-60 overflow-y-auto space-y-0.5">
                       {communities.map((c) => {
                         const isSelected = selectedCommunity === c.id || selectedCommunity === c.name;
                         return (
@@ -242,7 +258,7 @@ export default function TopNavigation() {
                             }`}
                           >
                             <span className="truncate pr-2">🏢 {c.name}</span>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
+                            {isSelected && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
                           </button>
                         );
                       })}
@@ -252,7 +268,7 @@ export default function TopNavigation() {
               </div>
             </div>
 
-            {/* Middle: Layer 1 Navigation Links (Desktop) */}
+            {/* Middle: Primary Navigation Tabs (Desktop) */}
             <nav className="hidden lg:flex items-center gap-1">
               {primaryCategories.map((category) => {
                 const isActive = activeCategory.id === category.id;
@@ -261,51 +277,113 @@ export default function TopNavigation() {
                   <Link
                     key={category.id}
                     href={category.defaultHref}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs transition-all duration-150 ${
                       isActive
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                        ? 'text-white font-extrabold bg-slate-800/90 shadow-sm border border-slate-700/60'
+                        : 'text-slate-300 font-semibold hover:text-white hover:bg-slate-800/40'
                     }`}
                   >
-                    <IconComponent className="w-4 h-4" />
+                    <IconComponent className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
                     <span>{category.label}</span>
+                    {isActive && (
+                      <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-emerald-400 rounded-full shadow-sm" />
+                    )}
                   </Link>
                 );
               })}
             </nav>
 
-            {/* Right: Quick Search, Admin Pill, Logout */}
-            <div className="flex items-center gap-3">
+            {/* Right: + QUICK ACTION MENU, Search, User, Logout */}
+            <div className="flex items-center gap-2.5">
+              
+              {/* ── GLOBAL + QUICK ACTION DROPDOWN BUTTON ── */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQuickActions(!showQuickActions);
+                    setShowCommunityDropdown(false);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Take Action</span>
+                  <ChevronDown className="w-3 h-3 opacity-80" />
+                </button>
+
+                {/* Quick Actions Dropdown Menu */}
+                {showQuickActions && (
+                  <div
+                    className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-1.5 text-slate-800 animate-in fade-in duration-150"
+                    onMouseLeave={() => setShowQuickActions(false)}
+                  >
+                    <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/50">
+                      <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                        <Zap className="w-3 h-3 text-emerald-600" />
+                        Admin Quick Actions
+                      </p>
+                    </div>
+
+                    <Link
+                      href="/payments?action=record"
+                      onClick={() => setShowQuickActions(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
+                    >
+                      <CreditCard className="w-4 h-4 text-emerald-600" />
+                      <span>Record Payment</span>
+                    </Link>
+
+                    <Link
+                      href="/bookings?action=create"
+                      onClick={() => setShowQuickActions(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
+                    >
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <span>Create Booking</span>
+                    </Link>
+
+                    <Link
+                      href="/users?action=create"
+                      onClick={() => setShowQuickActions(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
+                    >
+                      <Users className="w-4 h-4 text-indigo-600" />
+                      <span>Add Resident / User</span>
+                    </Link>
+
+                    <Link
+                      href="/invoices?action=generate"
+                      onClick={() => setShowQuickActions(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors"
+                    >
+                      <Receipt className="w-4 h-4 text-amber-600" />
+                      <span>Generate Invoice</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+
               {/* Cmd + K Quick Search Button */}
               <button
                 type="button"
                 onClick={() => setShowCommandPalette(true)}
-                className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 rounded-xl text-xs text-slate-300 transition-all shadow-sm"
+                className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 bg-slate-850 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-xs text-slate-300 transition-all shadow-sm"
+                title="Search pages or communities"
               >
                 <Search className="w-3.5 h-3.5 text-slate-400" />
-                <span className="font-medium">Search...</span>
                 <kbd className="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-700">
                   ⌘K
                 </kbd>
               </button>
 
-              {/* User Role */}
-              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-800/80 border border-slate-700/60 rounded-xl text-xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span className="font-semibold text-slate-200 capitalize">
-                  {user?.role?.replace('_', ' ') || 'Admin'}
-                </span>
-              </div>
-
               {/* Logout */}
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition-all"
+                className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition-all"
                 title="Logout"
               >
                 <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Logout</span>
               </button>
 
               {/* Mobile Drawer Button */}
@@ -321,12 +399,12 @@ export default function TopNavigation() {
           </div>
         </div>
 
-        {/* ── LAYER 2: Secondary Sub-Menu Bar (Clean Light Subnav) ──────────── */}
-        <div className="bg-white border-b border-slate-200/80 px-4 md:px-8 py-2">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 overflow-x-auto no-scrollbar">
+        {/* ── LAYER 2: Context & Sub-Menu Bar (Straightforward Light Bar) ───── */}
+        <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-2.5">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
             
-            {/* Active Sub-Menu Links */}
-            <div className="flex items-center gap-1 sm:gap-2">
+            {/* Sub-Menu Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
               {activeSubMenuItems.map((item) => {
                 const isSubActive =
                   item.href === '/'
@@ -341,25 +419,21 @@ export default function TopNavigation() {
                     href={item.href}
                     className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                       isSubActive
-                        ? 'bg-slate-100 text-emerald-700 shadow-sm border border-slate-200/80'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
-                    <IconComp className={`w-3.5 h-3.5 ${isSubActive ? 'text-emerald-600' : 'text-slate-400'}`} />
+                    <IconComp className={`w-3.5 h-3.5 ${isSubActive ? 'text-emerald-400' : 'text-slate-400'}`} />
                     <span>{item.label}</span>
                   </Link>
                 );
               })}
             </div>
 
-            {/* Active Community Pill Indicator (Right-aligned in Layer 2) */}
-            <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-1 rounded-full whitespace-nowrap">
-              <span>Scoped to:</span>
-              <span className="text-emerald-700 font-extrabold">
-                {selectedCommunity === 'ALL'
-                  ? '🌐 All Communities'
-                  : `🏢 ${selectedCommunityObj?.name || selectedCommunity}`}
-              </span>
+            {/* Clear Context Statement (What am I looking at?) */}
+            <div className="hidden md:flex items-center gap-2 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-1 rounded-lg">
+              <span className="font-bold text-slate-700">Looking at:</span>
+              <span className="text-slate-900 font-semibold">{currentSubItem?.description}</span>
             </div>
 
           </div>
@@ -369,7 +443,7 @@ export default function TopNavigation() {
       {/* Mobile Drawer Overlay */}
       {mobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex flex-col">
-          <div className="bg-slate-900 p-4 border-b border-slate-800 flex items-center justify-between">
+          <div className="bg-slate-950 p-4 border-b border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2 text-white font-bold text-sm">
               <Car className="w-5 h-5 text-emerald-400" />
               <span>Vervice Admin Menu</span>
@@ -378,10 +452,10 @@ export default function TopNavigation() {
               <X className="w-6 h-6" />
             </button>
           </div>
-          <div className="bg-slate-900 flex-1 overflow-y-auto p-4 space-y-6">
+          <div className="bg-slate-950 flex-1 overflow-y-auto p-4 space-y-6">
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
-                Primary Sections
+                Main Sections
               </p>
               <div className="space-y-1">
                 {primaryCategories.map((cat) => (
