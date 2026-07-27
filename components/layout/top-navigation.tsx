@@ -74,7 +74,7 @@ export default function TopNavigation() {
     router.refresh();
   };
 
-  // Define Layer 1 Primary Categories with Straightforward Labels
+  // Define Primary Categories (Layer 2)
   const primaryCategories: PrimaryCategory[] = [
     {
       id: 'overview',
@@ -99,7 +99,7 @@ export default function TopNavigation() {
     },
     {
       id: 'finance',
-      label: 'Payments & Invoices',
+      label: 'Payments & Billing',
       icon: CreditCard,
       subRoutes: ['/payments', '/invoices'],
       defaultHref: '/payments',
@@ -120,7 +120,7 @@ export default function TopNavigation() {
     },
   ];
 
-  // Define Layer 2 Sub-Menu Items with Explanatory Descriptions
+  // Define Sub-Menu Items (Layer 3)
   const subMenuItems: SubMenuItem[] = [
     // Overview
     { href: '/', label: 'Main Dashboard', icon: LayoutDashboard, parentCategoryId: 'overview', description: 'Real-time revenue, active bookings, & community metrics' },
@@ -135,7 +135,7 @@ export default function TopNavigation() {
 
     // Finance
     { href: '/payments', label: 'Payment Verifications', icon: CreditCard, parentCategoryId: 'finance', description: 'Review & verify manual UPI payments from residents' },
-    { href: '/invoices', label: 'Monthly Billing & Invoices', icon: Receipt, parentCategoryId: 'finance', description: 'Generate monthly invoices & track overdue balances' },
+    { href: '/invoices', label: 'Monthly Invoices', icon: Receipt, parentCategoryId: 'finance', description: 'Generate monthly invoices & track overdue balances' },
 
     // Services
     { href: '/battery-requests', label: 'Battery Jumpstart', icon: Battery, parentCategoryId: 'services', description: 'Urgent battery jumpstart & replacement requests' },
@@ -146,7 +146,7 @@ export default function TopNavigation() {
     { href: '/audit-log', label: 'Admin Audit Log', icon: History, parentCategoryId: 'system', description: 'Trace all admin actions, approvals, and system events' },
   ];
 
-  // Resolve Active Layer 1 Primary Category based on current pathname
+  // Resolve Active Layer 2 Primary Category based on current pathname
   const activeCategory =
     primaryCategories.find((cat) =>
       cat.subRoutes.some((route) =>
@@ -154,7 +154,7 @@ export default function TopNavigation() {
       )
     ) || primaryCategories[0];
 
-  // Get active Layer 2 sub-menu items for the active category
+  // Get active Layer 3 sub-menu items for the active category
   const activeSubMenuItems = subMenuItems.filter(
     (item) => item.parentCategoryId === activeCategory.id
   );
@@ -167,136 +167,110 @@ export default function TopNavigation() {
   return (
     <>
       <header className="sticky top-0 z-40 shadow-md">
-        {/* ── LAYER 1: Primary Header Bar (Straightforward Dark Slate) ──────────── */}
+        
+        {/* ── LAYER 1: Top Bar (Brand Logo + Centered Community Scope + Actions) ── */}
         <div className="bg-slate-950 border-b border-slate-800 text-white px-4 md:px-8 py-2.5">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
-            {/* Left: Brand Logo + Global Community Scope Picker */}
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
-                <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-md shadow-emerald-950/40 group-hover:scale-105 transition-transform">
-                  <Car className="w-5 h-5 text-white" />
-                </div>
-                <div className="hidden sm:block">
-                  <span className="font-extrabold text-white text-base tracking-tight">Vervice</span>
-                  <span className="text-[10px] font-bold text-emerald-400 block -mt-1 tracking-wider uppercase">
-                    Admin Portal
-                  </span>
-                </div>
-              </Link>
-
-              {/* ── GLOBAL COMMUNITY SELECTOR (What society are you managing?) ── */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCommunityDropdown(!showCommunityDropdown);
-                    setShowQuickActions(false);
-                  }}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-850 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-xs font-bold text-slate-100 transition-all shadow-sm"
-                  title="Switch target community scope"
-                >
-                  <span className="text-emerald-400 font-extrabold">🏢 Scope:</span>
-                  <span className="max-w-[130px] sm:max-w-[170px] truncate text-emerald-300 font-extrabold">
-                    {selectedCommunity === 'ALL'
-                      ? 'All Communities'
-                      : selectedCommunityObj?.name || selectedCommunity}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                </button>
-
-                {/* Dropdown Menu */}
-                {showCommunityDropdown && (
-                  <div
-                    className="absolute left-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in duration-150"
-                    onMouseLeave={() => setShowCommunityDropdown(false)}
-                  >
-                    <div className="px-3 py-2 border-b border-slate-800">
-                      <p className="text-[11px] font-bold text-white uppercase tracking-wider">
-                        Filter Portal by Community
-                      </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        Select a society to scope all stats, bookings, & payments
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedCommunity('ALL');
-                        setShowCommunityDropdown(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-bold text-left transition-colors ${
-                        selectedCommunity === 'ALL'
-                          ? 'bg-emerald-600/20 text-emerald-300'
-                          : 'text-slate-300 hover:bg-slate-800'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span>🌐</span> View All Communities Combined
-                      </span>
-                      {selectedCommunity === 'ALL' && <Check className="w-4 h-4 text-emerald-400" />}
-                    </button>
-
-                    <div className="my-1 border-t border-slate-800"></div>
-
-                    <div className="max-h-60 overflow-y-auto space-y-0.5">
-                      {communities.map((c) => {
-                        const isSelected = selectedCommunity === c.id || selectedCommunity === c.name;
-                        return (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedCommunity(c.id);
-                              setShowCommunityDropdown(false);
-                            }}
-                            className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-left transition-colors ${
-                              isSelected
-                                ? 'bg-emerald-600/20 text-emerald-300 font-bold'
-                                : 'text-slate-300 hover:bg-slate-800'
-                            }`}
-                          >
-                            <span className="truncate pr-2">🏢 {c.name}</span>
-                            {isSelected && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+            {/* Left: Brand Logo */}
+            <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
+              <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-md shadow-emerald-950/40 group-hover:scale-105 transition-transform">
+                <Car className="w-5 h-5 text-white" />
               </div>
-            </div>
+              <div className="hidden sm:block">
+                <span className="font-extrabold text-white text-base tracking-tight">Vervice</span>
+                <span className="text-[10px] font-bold text-emerald-400 block -mt-1 tracking-wider uppercase">
+                  Admin Portal
+                </span>
+              </div>
+            </Link>
 
-            {/* Middle: Primary Navigation Tabs (Desktop) */}
-            <nav className="hidden lg:flex items-center gap-1">
-              {primaryCategories.map((category) => {
-                const isActive = activeCategory.id === category.id;
-                const IconComponent = category.icon;
-                return (
-                  <Link
-                    key={category.id}
-                    href={category.defaultHref}
-                    className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs transition-all duration-150 ${
-                      isActive
-                        ? 'text-white font-extrabold bg-slate-800/90 shadow-sm border border-slate-700/60'
-                        : 'text-slate-300 font-semibold hover:text-white hover:bg-slate-800/40'
+            {/* Middle: Prominent Community Scope Selector */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCommunityDropdown(!showCommunityDropdown);
+                  setShowQuickActions(false);
+                }}
+                className="flex items-center gap-2 px-4 py-1.5 bg-slate-900 hover:bg-slate-850 border border-slate-700/90 rounded-xl text-xs font-bold text-slate-100 transition-all shadow-md active:scale-95"
+                title="Change active community scope"
+              >
+                <span className="text-slate-400 font-medium">Managing Community:</span>
+                <span className="text-emerald-400 font-extrabold text-sm max-w-[160px] sm:max-w-[220px] truncate">
+                  {selectedCommunity === 'ALL'
+                    ? '🌐 All Communities Combined'
+                    : `🏢 ${selectedCommunityObj?.name || selectedCommunity}`}
+                </span>
+                <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              </button>
+
+              {/* Community Dropdown Menu */}
+              {showCommunityDropdown && (
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 mt-2 w-80 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in duration-150"
+                  onMouseLeave={() => setShowCommunityDropdown(false)}
+                >
+                  <div className="px-3.5 py-2 border-b border-slate-800">
+                    <p className="text-[11px] font-bold text-white uppercase tracking-wider">
+                      Filter Entire Portal by Community
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Select a society to scope all stats, bookings, & payments
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCommunity('ALL');
+                      setShowCommunityDropdown(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-bold text-left transition-colors ${
+                      selectedCommunity === 'ALL'
+                        ? 'bg-emerald-600/20 text-emerald-300'
+                        : 'text-slate-300 hover:bg-slate-800'
                     }`}
                   >
-                    <IconComponent className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
-                    <span>{category.label}</span>
-                    {isActive && (
-                      <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-emerald-400 rounded-full shadow-sm" />
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
+                    <span className="flex items-center gap-2">
+                      <span>🌐</span> All Communities Combined
+                    </span>
+                    {selectedCommunity === 'ALL' && <Check className="w-4 h-4 text-emerald-400" />}
+                  </button>
 
-            {/* Right: + QUICK ACTION MENU, Search, User, Logout */}
-            <div className="flex items-center gap-2.5">
+                  <div className="my-1 border-t border-slate-800"></div>
+
+                  <div className="max-h-60 overflow-y-auto space-y-0.5">
+                    {communities.map((c) => {
+                      const isSelected = selectedCommunity === c.id || selectedCommunity === c.name;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCommunity(c.id);
+                            setShowCommunityDropdown(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3.5 py-2 text-xs font-semibold text-left transition-colors ${
+                            isSelected
+                              ? 'bg-emerald-600/20 text-emerald-300 font-bold'
+                              : 'text-slate-300 hover:bg-slate-800'
+                          }`}
+                        >
+                          <span className="truncate pr-2">🏢 {c.name}</span>
+                          {isSelected && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right: + Quick Action, Search, Logout */}
+            <div className="flex items-center gap-2">
               
-              {/* ── GLOBAL + QUICK ACTION DROPDOWN BUTTON ── */}
+              {/* + Take Action Dropdown */}
               <div className="relative">
                 <button
                   type="button"
@@ -367,11 +341,11 @@ export default function TopNavigation() {
               <button
                 type="button"
                 onClick={() => setShowCommandPalette(true)}
-                className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 bg-slate-850 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-xs text-slate-300 transition-all shadow-sm"
+                className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 rounded-xl text-xs text-slate-300 transition-all shadow-sm"
                 title="Search pages or communities"
               >
                 <Search className="w-3.5 h-3.5 text-slate-400" />
-                <kbd className="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-700">
+                <kbd className="font-mono bg-slate-950 px-1.5 py-0.5 rounded text-[10px] text-slate-400 border border-slate-700">
                   ⌘K
                 </kbd>
               </button>
@@ -394,13 +368,42 @@ export default function TopNavigation() {
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
+
             </div>
 
           </div>
         </div>
 
-        {/* ── LAYER 2: Context & Sub-Menu Bar (Straightforward Light Bar) ───── */}
-        <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-2.5">
+        {/* ── LAYER 2: Dedicated Main Category Menu Bar (Dark Slate Nav) ────────── */}
+        <div className="bg-slate-900 border-b border-slate-800 px-4 md:px-8 py-1.5">
+          <div className="max-w-7xl mx-auto flex items-center justify-between overflow-x-auto no-scrollbar">
+            
+            <nav className="flex items-center gap-1.5">
+              {primaryCategories.map((category) => {
+                const isActive = activeCategory.id === category.id;
+                const IconComponent = category.icon;
+                return (
+                  <Link
+                    key={category.id}
+                    href={category.defaultHref}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                      isActive
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <IconComponent className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <span>{category.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+
+          </div>
+        </div>
+
+        {/* ── LAYER 3: Contextual Sub-Menu & Page Description Bar (Clean Light Nav) ── */}
+        <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-2">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
             
             {/* Sub-Menu Tabs */}
@@ -438,6 +441,7 @@ export default function TopNavigation() {
 
           </div>
         </div>
+
       </header>
 
       {/* Mobile Drawer Overlay */}
