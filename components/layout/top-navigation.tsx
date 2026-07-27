@@ -74,7 +74,7 @@ export default function TopNavigation() {
     router.refresh();
   };
 
-  // Define Primary Categories (Layer 2)
+  // Define Layer 2 Main Categories
   const primaryCategories: PrimaryCategory[] = [
     {
       id: 'overview',
@@ -86,9 +86,16 @@ export default function TopNavigation() {
     {
       id: 'operations',
       label: 'Services & Cleaning',
-      icon: Building2,
-      subRoutes: ['/communities', '/bookings', '/partners'],
+      icon: FileText,
+      subRoutes: ['/bookings', '/partners'],
       defaultHref: '/bookings',
+    },
+    {
+      id: 'communities_mgmt',
+      label: 'Manage Communities',
+      icon: Building2,
+      subRoutes: ['/communities'],
+      defaultHref: '/communities',
     },
     {
       id: 'residents',
@@ -120,15 +127,17 @@ export default function TopNavigation() {
     },
   ];
 
-  // Define Sub-Menu Items (Layer 3)
+  // Define Layer 3 Sub-Menu Items (No redundant communities link)
   const subMenuItems: SubMenuItem[] = [
     // Overview
     { href: '/', label: 'Main Dashboard', icon: LayoutDashboard, parentCategoryId: 'overview', description: 'Real-time revenue, active bookings, & community metrics' },
 
-    // Operations
+    // Operations (Services & Cleaning)
     { href: '/bookings', label: 'Cleaning Schedules', icon: FileText, parentCategoryId: 'operations', description: 'Manage daily car cleaning bookings and active plans' },
-    { href: '/communities', label: 'Communities & Blocks', icon: Building2, parentCategoryId: 'operations', description: 'Gated societies, block structures, & flat counts' },
     { href: '/partners', label: 'Cleaners & Staff', icon: UserCheck, parentCategoryId: 'operations', description: 'Assigned cleaners, attendance, & active gates' },
+
+    // Manage Communities
+    { href: '/communities', label: 'Society Directory', icon: Building2, parentCategoryId: 'communities_mgmt', description: 'Manage gated societies, block structures, & flat setups' },
 
     // Residents
     { href: '/users', label: 'Resident Accounts', icon: Users, parentCategoryId: 'residents', description: 'Resident profiles, phone numbers, & vehicle assignments' },
@@ -168,7 +177,7 @@ export default function TopNavigation() {
     <>
       <header className="sticky top-0 z-40 shadow-md">
         
-        {/* ── LAYER 1: Top Bar (Brand Logo + Centered Community Scope + Actions) ── */}
+        {/* ── LAYER 1: Top Header Bar (Brand + Centered Community Scope + Quick Actions) ── */}
         <div className="bg-slate-950 border-b border-slate-800 text-white px-4 md:px-8 py-2.5">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
             
@@ -374,7 +383,7 @@ export default function TopNavigation() {
           </div>
         </div>
 
-        {/* ── LAYER 2: Dedicated Main Category Menu Bar (Dark Slate Nav) ────────── */}
+        {/* ── LAYER 2: Dedicated Main Category Menu Bar (Includes Manage Communities) ── */}
         <div className="bg-slate-900 border-b border-slate-800 px-4 md:px-8 py-1.5">
           <div className="max-w-7xl mx-auto flex items-center justify-between overflow-x-auto no-scrollbar">
             
@@ -386,7 +395,7 @@ export default function TopNavigation() {
                   <Link
                     key={category.id}
                     href={category.defaultHref}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                       isActive
                         ? 'bg-emerald-600 text-white shadow-md'
                         : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -402,7 +411,7 @@ export default function TopNavigation() {
           </div>
         </div>
 
-        {/* ── LAYER 3: Contextual Sub-Menu & Page Description Bar (Clean Light Nav) ── */}
+        {/* ── LAYER 3: Contextual Sub-Menu Bar (Specific to selected Layer 2 category) ── */}
         <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-2">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
             
@@ -433,7 +442,7 @@ export default function TopNavigation() {
               })}
             </div>
 
-            {/* Clear Context Statement (What am I looking at?) */}
+            {/* Clear Context Statement */}
             <div className="hidden md:flex items-center gap-2 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200/80 px-3 py-1 rounded-lg">
               <span className="font-bold text-slate-700">Looking at:</span>
               <span className="text-slate-900 font-semibold">{currentSubItem?.description}</span>
