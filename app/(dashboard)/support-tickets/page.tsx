@@ -10,6 +10,7 @@ import {
   HelpCircle,
   MessageSquare,
 } from 'lucide-react';
+import { useCommunity } from '@/lib/community-context';
 import { formatDateTime } from '@/lib/utils';
 
 interface SupportTicket {
@@ -28,6 +29,7 @@ interface SupportTicket {
 }
 
 export default function SupportTicketsPage() {
+  const { selectedCommunity, selectedCommunityObj } = useCommunity();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
@@ -37,6 +39,14 @@ export default function SupportTicketsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+
+  useEffect(() => {
+    if (selectedCommunity !== 'ALL') {
+      setCommunityFilter(selectedCommunityObj?.name || selectedCommunity);
+    } else {
+      setCommunityFilter('all');
+    }
+  }, [selectedCommunity, selectedCommunityObj]);
 
   // Modal State
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);

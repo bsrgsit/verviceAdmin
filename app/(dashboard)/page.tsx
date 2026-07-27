@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import { useCommunity } from '@/lib/community-context';
 import { formatCurrency, timeAgo } from '@/lib/utils';
 
 interface DashboardStats {
@@ -43,6 +44,7 @@ interface AuditEntry {
 }
 
 export default function DashboardPage() {
+  const { selectedCommunity, selectedCommunityObj } = useCommunity();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<AuditEntry[]>([]);
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
@@ -51,8 +53,14 @@ export default function DashboardPage() {
   const [showAllStats, setShowAllStats] = useState(false);
 
   useEffect(() => {
+    setLoading(true);
+    const statsUrl =
+      selectedCommunity !== 'ALL'
+        ? `/api/communities/${selectedCommunity}/stats`
+        : '/api/dashboard/stats';
+
     Promise.all([
-      fetch('/api/dashboard/stats').then((r) => r.json()),
+      fetch(statsUrl).then((r) => r.json()),
       fetch('/api/dashboard/activity').then((r) => r.json()),
       fetch('/api/dashboard/pending').then((r) => r.json()),
       fetch('/api/communities').then((r) => r.json()),
@@ -60,11 +68,32 @@ export default function DashboardPage() {
       .then(([statsData, activityData, pendingData, communitiesData]) => {
         setStats(statsData?.error ? null : statsData);
         setRecentActivity(Array.isArray(activityData) ? activityData : []);
-        setPendingPayments(Array.isArray(pendingData) ? pendingData : []);
-        setCommunities(Array.isArray(communitiesData) ? communitiesData : []);
+
+        const rawPending = Array.isArray(pendingData) ? pendingData : [];
+        const rawCommunities = Array.isArray(communitiesData) ? communitiesData : [];
+
+        if (selectedCommunity !== 'ALL') {
+          const commName = selectedCommunityObj?.name || selectedCommunity;
+          setPendingPayments(
+            rawPending.filter(
+              (p: any) =>
+                p.community === commName ||
+                p.userCommunity === commName ||
+                p.communityId === selectedCommunity
+            )
+          );
+          setCommunities(
+            rawCommunities.filter(
+              (c: any) => c.id === selectedCommunity || c.name === commName
+            )
+          );
+        } else {
+          setPendingPayments(rawPending);
+          setCommunities(rawCommunities);
+        }
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedCommunity, selectedCommunityObj]);
 
   if (loading) {
     return (

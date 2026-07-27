@@ -12,6 +12,7 @@ import {
   Clock,
   MapPin,
 } from 'lucide-react';
+import { useCommunity } from '@/lib/community-context';
 import { formatDateTime } from '@/lib/utils';
 
 interface DriverRequest {
@@ -33,6 +34,7 @@ interface DriverRequest {
 }
 
 export default function DriverRequestsPage() {
+  const { selectedCommunity, selectedCommunityObj } = useCommunity();
   const [requests, setRequests] = useState<DriverRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
@@ -42,6 +44,14 @@ export default function DriverRequestsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+
+  useEffect(() => {
+    if (selectedCommunity !== 'ALL') {
+      setCommunityFilter(selectedCommunityObj?.name || selectedCommunity);
+    } else {
+      setCommunityFilter('all');
+    }
+  }, [selectedCommunity, selectedCommunityObj]);
 
   // Modal State
   const [selectedRequest, setSelectedRequest] = useState<DriverRequest | null>(null);

@@ -13,6 +13,7 @@ import {
   Edit2,
   Trash2,
 } from 'lucide-react';
+import { useCommunity } from '@/lib/community-context';
 import { formatCurrency, formatDateTime, timeAgo } from '@/lib/utils';
 import PageHeader from '@/components/ui/page-header';
 import DataTable from '@/components/ui/data-table';
@@ -311,7 +312,19 @@ export default function PaymentsPage() {
     }
   };
 
+  const { selectedCommunity, selectedCommunityObj } = useCommunity();
+
   const filteredPayments = payments.filter((p) => {
+    if (selectedCommunity !== 'ALL') {
+      const commName = selectedCommunityObj?.name || selectedCommunity;
+      if (
+        (p as any).community !== commName &&
+        (p as any).userCommunity !== commName &&
+        (p as any).communityId !== selectedCommunity
+      ) {
+        return false;
+      }
+    }
     if (filter === 'pending' && p.status !== 'pending_manual_verify') return false;
     if (filter === 'verified' && !p.adminVerified) return false;
     if (debouncedSearch) {

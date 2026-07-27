@@ -14,6 +14,7 @@ import {
   Trash2,
   Lock,
 } from 'lucide-react';
+import { useCommunity } from '@/lib/community-context';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 
 interface Vehicle {
@@ -314,7 +315,13 @@ export default function UsersPage() {
     setUserVehicles(userVehicles.filter((_, i) => i !== idx));
   };
 
+  const { selectedCommunity, selectedCommunityObj } = useCommunity();
+
   const filteredUsers = users.filter((u) => {
+    if (selectedCommunity !== 'ALL') {
+      const commName = selectedCommunityObj?.name || selectedCommunity;
+      if (u.community !== commName && u.community !== selectedCommunity) return false;
+    }
     if (!debouncedSearch) return true;
     const s = debouncedSearch.toLowerCase();
     return (

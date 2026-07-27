@@ -16,6 +16,7 @@ import {
   Clock,
   Calendar,
 } from 'lucide-react';
+import { useCommunity } from '@/lib/community-context';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 
 interface Vehicle {
@@ -67,6 +68,7 @@ interface Booking {
 }
 
 export default function BookingsPage() {
+  const { selectedCommunity, selectedCommunityObj } = useCommunity();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [partners, setPartners] = useState<any[]>([]);
@@ -80,6 +82,14 @@ export default function BookingsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+
+  useEffect(() => {
+    if (selectedCommunity !== 'ALL') {
+      setCommunityFilter(selectedCommunityObj?.name || selectedCommunity);
+    } else {
+      setCommunityFilter('all');
+    }
+  }, [selectedCommunity, selectedCommunityObj]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

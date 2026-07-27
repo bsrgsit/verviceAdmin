@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
+import { useCommunity } from '@/lib/community-context';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import PageHeader from '@/components/ui/page-header';
 import DataTable from '@/components/ui/data-table';
@@ -299,7 +300,19 @@ export default function InvoicesPage() {
     return `${months[monthIndex]} ${year}`;
   };
 
+  const { selectedCommunity, selectedCommunityObj } = useCommunity();
+
   const filteredInvoices = invoices.filter((inv) => {
+    if (selectedCommunity !== 'ALL') {
+      const commName = selectedCommunityObj?.name || selectedCommunity;
+      if (
+        inv.userCommunity !== commName &&
+        (inv as any).community !== commName &&
+        (inv as any).communityId !== selectedCommunity
+      ) {
+        return false;
+      }
+    }
     if (filter !== 'all' && inv.status !== filter) return false;
     if (debouncedSearch) {
       const searchLower = debouncedSearch.toLowerCase();

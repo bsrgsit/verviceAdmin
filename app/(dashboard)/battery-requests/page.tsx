@@ -11,6 +11,7 @@ import {
   Eye,
   BatteryCharging,
 } from 'lucide-react';
+import { useCommunity } from '@/lib/community-context';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 
 interface Vehicle {
@@ -47,6 +48,7 @@ interface BatteryRequest {
 }
 
 export default function BatteryRequestsPage() {
+  const { selectedCommunity, selectedCommunityObj } = useCommunity();
   const [requests, setRequests] = useState<BatteryRequest[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,6 +59,14 @@ export default function BatteryRequestsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+
+  useEffect(() => {
+    if (selectedCommunity !== 'ALL') {
+      setCommunityFilter(selectedCommunityObj?.name || selectedCommunity);
+    } else {
+      setCommunityFilter('all');
+    }
+  }, [selectedCommunity, selectedCommunityObj]);
 
   // Modals state
   const [selectedRequest, setSelectedRequest] = useState<BatteryRequest | null>(null);
