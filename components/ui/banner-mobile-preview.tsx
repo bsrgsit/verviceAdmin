@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Wifi,
   Battery as BatteryIcon,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface BannerPreviewProps {
@@ -21,6 +22,7 @@ interface BannerPreviewProps {
     imageUrl?: string;
     actionUrl?: string;
     communityId?: string;
+    bakedText?: boolean;
   };
   enableCleanStatusCard?: boolean;
 }
@@ -30,6 +32,9 @@ export default function BannerMobilePreview({
   enableCleanStatusCard = true,
 }: BannerPreviewProps) {
   const [deviceType, setDeviceType] = useState<'ios' | 'android'>('ios');
+  const [imgError, setImgError] = useState(false);
+
+  const hasImage = banner?.imageUrl && !imgError;
 
   return (
     <div className="flex flex-col items-center space-y-3 w-full">
@@ -101,33 +106,53 @@ export default function BannerMobilePreview({
 
           {/* App Body Scrollable Area */}
           <div className="flex-1 p-3.5 space-y-3 overflow-y-auto scrollbar-none">
-            {/* ── LIVE PREVIEW BANNER CARD ── */}
-            <div className="relative rounded-2xl overflow-hidden shadow-md bg-gradient-to-br from-emerald-600 to-teal-800 text-white min-h-[140px] flex flex-col justify-end p-3.5">
-              {banner?.imageUrl && (
-                <img
-                  src={banner.imageUrl}
-                  alt={banner.title}
-                  className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay"
-                />
-              )}
-              <div className="relative z-10 space-y-1">
-                <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-white/20 text-white backdrop-blur-sm inline-block">
-                  Special Announcement
-                </span>
-                <h4 className="text-xs font-black leading-snug drop-shadow-sm line-clamp-2">
-                  {banner?.title || 'Your Banner Title Here'}
-                </h4>
-                {banner?.subtitle && (
-                  <p className="text-[10px] text-emerald-100 font-medium line-clamp-2 leading-tight">
-                    {banner.subtitle}
-                  </p>
-                )}
-                <div className="pt-1">
-                  <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.8 rounded-md bg-white text-emerald-900 shadow-xs">
-                    Explore Now <ChevronRight className="w-2.5 h-2.5" />
-                  </span>
+            {/* ── LIVE PREVIEW BANNER CARD (EXACT EXTERNAL IMAGE RENDERING) ── */}
+            <div className="relative rounded-2xl overflow-hidden shadow-md bg-slate-900 text-white min-h-[140px] flex flex-col justify-end">
+              {hasImage ? (
+                <>
+                  <img
+                    src={banner.imageUrl}
+                    alt={banner.title}
+                    onError={() => setImgError(true)}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  {/* Subtle readable overlay only if text is provided */}
+                  {(banner?.title || banner?.subtitle) && !banner.bakedText && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent z-10" />
+                  )}
+                </>
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center p-4 text-center">
+                  <div className="text-emerald-200/60">
+                    <ImageIcon className="w-8 h-8 mx-auto mb-1 opacity-50" />
+                    <p className="text-[9px] font-semibold">No Image Provided</p>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Text Overlay (if not purely baked image) */}
+              {(!banner.bakedText || !hasImage) && (
+                <div className="relative z-20 p-3.5 space-y-1">
+                  <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-white/25 text-white backdrop-blur-sm inline-block">
+                    Special Offer
+                  </span>
+                  <h4 className="text-xs font-black leading-snug drop-shadow-sm line-clamp-2">
+                    {banner?.title || 'Announcement Title'}
+                  </h4>
+                  {banner?.subtitle && (
+                    <p className="text-[10px] text-slate-100 font-medium line-clamp-2 leading-tight drop-shadow-xs">
+                      {banner.subtitle}
+                    </p>
+                  )}
+                  {banner?.actionUrl && (
+                    <div className="pt-1">
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.8 rounded-md bg-white text-emerald-900 shadow-xs">
+                        View Details <ChevronRight className="w-2.5 h-2.5" />
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ── TODAY'S CLEAN STATUS CARD BELOW BANNER ── */}

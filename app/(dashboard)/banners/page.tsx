@@ -5,9 +5,12 @@ import {
   Image as ImageIcon,
   Plus,
   Trash2,
-  ExternalLink,
+  Edit2,
   Globe,
   Eye,
+  CheckCircle2,
+  Save,
+  ExternalLink,
 } from 'lucide-react';
 import { useCommunity } from '@/lib/community-context';
 import BannerMobilePreview from '@/components/ui/banner-mobile-preview';
@@ -21,6 +24,9 @@ export default function BannersPage() {
   const [banners, setBanners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<any>(null);
+
   const [selectedPreviewBanner, setSelectedPreviewBanner] = useState<any>({
     title: '50% Off Doorstep Shine',
     subtitle: 'Daily waterless microfiber cleaning with streak-free glass gloss',
@@ -58,7 +64,7 @@ export default function BannersPage() {
   }, []);
 
   const handleCreateBanner = async () => {
-    if (!newBanner.title || !newBanner.imageUrl) return;
+    if (!newBanner.title && !newBanner.imageUrl) return;
     try {
       const res = await fetch('/api/banners', {
         method: 'POST',
@@ -75,6 +81,39 @@ export default function BannersPage() {
           communityId: 'ALL',
           priority: 1,
         });
+        loadBanners();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleOpenEdit = (banner: any) => {
+    setEditingBanner({
+      id: banner.id,
+      title: banner.title || '',
+      subtitle: banner.subtitle || '',
+      imageUrl: banner.imageUrl || '',
+      actionUrl: banner.actionUrl || banner.redirectUrl || banner.deepLink || '',
+      communityId: banner.communityId || (Array.isArray(banner.communities) && banner.communities.length > 0 ? banner.communities[0] : 'ALL'),
+      priority: banner.priority ?? banner.sortOrder ?? 1,
+      isActive: banner.isActive !== undefined ? banner.isActive : true,
+    });
+    setSelectedPreviewBanner(banner);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingBanner) return;
+    try {
+      const res = await fetch(`/api/banners/${editingBanner.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingBanner),
+      });
+      if (res.ok) {
+        setShowEditModal(false);
+        setEditingBanner(null);
         loadBanners();
       }
     } catch (e) {
@@ -123,7 +162,7 @@ export default function BannersPage() {
               Home Banners & Mobile App Announcements
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Create, manage, and preview promotional carousels for Android & iOS consumer apps
+              Create, edit, and preview promotional carousels for Android & iOS consumer apps with exact CDN image rendering
             </p>
           </div>
 
@@ -174,8 +213,8 @@ export default function BannersPage() {
                       isSelected ? 'ring-2 ring-emerald-600 border-emerald-600 shadow-md' : 'hover:shadow-md'
                     }`}
                   >
-                    {/* Image Preview */}
-                    <div className="relative h-32 bg-slate-100 overflow-hidden">
+                    {/* Exact External Image Rendering */}
+                    <div className="relative h-32 bg-slate-900 overflow-hidden">
                       {banner.imageUrl ? (
                         <img
                           src={banner.imageUrl}
@@ -183,7 +222,7 @@ export default function BannersPage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-300">
+                        <div className="w-full h-full flex items-center justify-center text-slate-500 bg-slate-100">
                           <ImageIcon className="w-8 h-8" />
                         </div>
                       )}
@@ -196,31 +235,49 @@ export default function BannersPage() {
 
                     {/* Details */}
                     <div className="p-3.5 space-y-1.5 flex-1">
-                      <h3 className="text-xs font-extrabold text-slate-900 line-clamp-1">{banner.title}</h3>
+                      <h3 className="text-xs font-extrabold text-slate-900 line-clamp-1">{banner.title || 'Untitled Banner'}</h3>
                       {banner.subtitle && (
                         <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
                           {banner.subtitle}
                         </p>
                       )}
-                      <div className="flex items-center gap-1.5 pt-1 text-[10px] text-slate-400 font-medium">
-                        <Globe className="w-3 h-3" />
-                        <span className="truncate">{banner.communityId === 'ALL' ? 'All Communities' : banner.communityId}</span>
+                      <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400 font-medium">
+                        <span className="flex items-center gap-1 truncate">
+                          <Globe className="w-3 h-3" />
+                          <span className="truncate">{banner.communityId === 'ALL' ? 'All Societies' : banner.communityId}</span>
+                        </span>
+                        <span>Order: {banner.sortOrder ?? banner.priority ?? 0}</span>
                       </div>
                     </div>
 
-                    {/* Actions Footer */}
+                    {/* Actions Footer with EDIT and DELETE */}
                     <div className="p-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleActive(banner);
-                        }}
-                        className="text-[11px] font-bold text-slate-700 hover:text-emerald-700 h-7 px-2"
-                      >
-                        {banner.isActive ? 'Deactivate' : 'Activate'}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEdit(banner);
+                          }}
+                          className="text-xs font-bold text-slate-700 hover:text-emerald-700 h-7 px-2 flex items-center gap-1"
+                        >
+                          <Edit2 className="w-3 h-3 text-emerald-600" />
+                          <span>Edit</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleActive(banner);
+                          }}
+                          className="text-[11px] font-semibold text-slate-500 hover:text-slate-900 h-7 px-2"
+                        >
+                          {banner.isActive ? 'Hide' : 'Show'}
+                        </Button>
+                      </div>
+
                       <Button
                         variant="ghost"
                         size="sm"
@@ -249,8 +306,20 @@ export default function BannersPage() {
                 <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                   <Eye className="w-4 h-4 text-emerald-600" /> Live Mobile App Preview
                 </h3>
-                <p className="text-[10px] text-slate-400">Real-time iPhone & Android rendering</p>
+                <p className="text-[10px] text-slate-400">Authentic CDN image rendering on iOS & Android</p>
               </div>
+
+              {selectedPreviewBanner && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleOpenEdit(selectedPreviewBanner)}
+                  className="gap-1 text-xs font-bold"
+                >
+                  <Edit2 className="w-3 h-3 text-emerald-600" />
+                  <span>Edit Selected</span>
+                </Button>
+              )}
             </div>
 
             <BannerMobilePreview banner={selectedPreviewBanner} />
@@ -258,13 +327,26 @@ export default function BannersPage() {
         </div>
       </div>
 
-      {/* Add Banner Modal */}
+      {/* ── ADD BANNER MODAL ── */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
           <Card className="w-full max-w-md shadow-2xl p-6 space-y-4">
             <h3 className="text-base font-extrabold text-slate-900">Create Home Banner</h3>
 
             <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Image URL (CDN / Firebase Storage)</label>
+                <Input
+                  type="text"
+                  value={newBanner.imageUrl}
+                  onChange={(e) => {
+                    setNewBanner({ ...newBanner, imageUrl: e.target.value });
+                    setSelectedPreviewBanner({ ...selectedPreviewBanner, imageUrl: e.target.value });
+                  }}
+                  placeholder="https://storage.googleapis.com/... or https://..."
+                />
+              </div>
+
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Banner Title</label>
                 <Input
@@ -279,7 +361,7 @@ export default function BannersPage() {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Subtitle / Message</label>
+                <label className="font-bold text-slate-700 block mb-1">Subtitle / Promo Message</label>
                 <Input
                   type="text"
                   value={newBanner.subtitle}
@@ -292,32 +374,47 @@ export default function BannersPage() {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Image URL</label>
+                <label className="font-bold text-slate-700 block mb-1">Action Link / Deep Link (Optional)</label>
                 <Input
                   type="text"
-                  value={newBanner.imageUrl}
+                  value={newBanner.actionUrl}
                   onChange={(e) => {
-                    setNewBanner({ ...newBanner, imageUrl: e.target.value });
-                    setSelectedPreviewBanner({ ...selectedPreviewBanner, imageUrl: e.target.value });
+                    setNewBanner({ ...newBanner, actionUrl: e.target.value });
+                    setSelectedPreviewBanner({ ...selectedPreviewBanner, actionUrl: e.target.value });
                   }}
-                  placeholder="https://images.unsplash.com/..."
+                  placeholder="e.g. /services or /bookings"
                 />
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Target Community</label>
-                <select
-                  value={newBanner.communityId}
-                  onChange={(e) => setNewBanner({ ...newBanner, communityId: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800"
-                >
-                  <option value="ALL">🌐 All Communities Combined</option>
-                  {communities.map((c) => (
-                    <option key={c.id} value={c.name}>
-                      🏢 {c.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Target Community</label>
+                  <select
+                    value={newBanner.communityId}
+                    onChange={(e) => {
+                      setNewBanner({ ...newBanner, communityId: e.target.value });
+                      setSelectedPreviewBanner({ ...selectedPreviewBanner, communityId: e.target.value });
+                    }}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800"
+                  >
+                    <option value="ALL">🌐 All Societies</option>
+                    {communities.map((c) => (
+                      <option key={c.id} value={c.name}>
+                        🏢 {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Sort Order / Priority</label>
+                  <Input
+                    type="number"
+                    value={newBanner.priority}
+                    onChange={(e) => setNewBanner({ ...newBanner, priority: Number(e.target.value) })}
+                    min={1}
+                  />
+                </div>
               </div>
             </div>
 
@@ -332,10 +429,128 @@ export default function BannersPage() {
               <Button
                 variant="default"
                 onClick={handleCreateBanner}
-                disabled={!newBanner.title || !newBanner.imageUrl}
+                disabled={!newBanner.title && !newBanner.imageUrl}
                 className="flex-1"
               >
                 Save & Publish
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ── EDIT BANNER MODAL ── */}
+      {showEditModal && editingBanner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <Card className="w-full max-w-md shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-emerald-600" />
+                Edit Banner
+              </h3>
+              <Badge variant="outline">ID: {editingBanner.id.slice(0, 8)}...</Badge>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Image URL (CDN / Firebase Storage)</label>
+                <Input
+                  type="text"
+                  value={editingBanner.imageUrl}
+                  onChange={(e) => {
+                    setEditingBanner({ ...editingBanner, imageUrl: e.target.value });
+                    setSelectedPreviewBanner({ ...selectedPreviewBanner, imageUrl: e.target.value });
+                  }}
+                  placeholder="https://storage.googleapis.com/... or https://..."
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Banner Title</label>
+                <Input
+                  type="text"
+                  value={editingBanner.title}
+                  onChange={(e) => {
+                    setEditingBanner({ ...editingBanner, title: e.target.value });
+                    setSelectedPreviewBanner({ ...selectedPreviewBanner, title: e.target.value });
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Subtitle / Promo Message</label>
+                <Input
+                  type="text"
+                  value={editingBanner.subtitle}
+                  onChange={(e) => {
+                    setEditingBanner({ ...editingBanner, subtitle: e.target.value });
+                    setSelectedPreviewBanner({ ...selectedPreviewBanner, subtitle: e.target.value });
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Action Link / Deep Link</label>
+                <Input
+                  type="text"
+                  value={editingBanner.actionUrl}
+                  onChange={(e) => {
+                    setEditingBanner({ ...editingBanner, actionUrl: e.target.value });
+                    setSelectedPreviewBanner({ ...selectedPreviewBanner, actionUrl: e.target.value });
+                  }}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Target Community</label>
+                  <select
+                    value={editingBanner.communityId}
+                    onChange={(e) => {
+                      setEditingBanner({ ...editingBanner, communityId: e.target.value });
+                      setSelectedPreviewBanner({ ...selectedPreviewBanner, communityId: e.target.value });
+                    }}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800"
+                  >
+                    <option value="ALL">🌐 All Societies</option>
+                    {communities.map((c) => (
+                      <option key={c.id} value={c.name}>
+                        🏢 {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Sort Order / Priority</label>
+                  <Input
+                    type="number"
+                    value={editingBanner.priority}
+                    onChange={(e) => setEditingBanner({ ...editingBanner, priority: Number(e.target.value) })}
+                    min={1}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingBanner(null);
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleSaveEdit}
+                className="flex-1 gap-1.5"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save Changes</span>
               </Button>
             </div>
           </Card>
