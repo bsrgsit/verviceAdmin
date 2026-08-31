@@ -1,4 +1,4 @@
-import type { Config } from "tailwindcss"
+﻿import type { Config } from "tailwindcss"
 
 const config: Config = {
   content: [
@@ -8,6 +8,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-sans)', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -27,7 +30,10 @@ const config: Config = {
           200: '#e2e8f0',
           350: '#cbd5e1',
           500: '#64748b',
+          750: '#243248',
+          850: '#151f32',
           900: '#0f172a',
+          950: '#080d1a',
         },
         primary: {
           DEFAULT: "hsl(var(--primary))",
@@ -58,13 +64,7 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-        xl: "1rem",
-        '2xl': "1.5rem",
       },
-      boxShadow: {
-        premium: '0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 8px -1px rgba(15, 23, 42, 0.02)',
-        'premium-hover': '0 12px 30px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04)',
-      }
     },
   },
   plugins: [],

@@ -19,12 +19,15 @@ import {
   Check,
   Search,
   Globe,
+  Sliders,
+  Image as ImageIcon,
+  Layout,
   Settings,
   X,
 } from 'lucide-react';
 import { useCommunity } from '@/lib/community-context';
 
-const navigationGroups = [
+export const navigationGroups = [
   {
     title: 'Core Operations',
     items: [
@@ -47,6 +50,14 @@ const navigationGroups = [
       { href: '/battery-requests', label: 'Battery Jumpstart', icon: Battery },
       { href: '/driver-requests', label: 'Driver Hire', icon: Car },
       { href: '/support-tickets', label: 'Support Helpdesk', icon: HelpCircle },
+    ],
+  },
+  {
+    title: 'App & Content Control',
+    items: [
+      { href: '/app-config', label: 'Feature Flags & Config', icon: Sliders },
+      { href: '/banners', label: 'Banners & Promotions', icon: ImageIcon },
+      { href: '/screen-config', label: 'Screen & Barrier Text', icon: Layout },
     ],
   },
   {

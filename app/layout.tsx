@@ -1,12 +1,16 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+﻿import type { Metadata } from 'next';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const font = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-sans',
+});
 
 export const metadata: Metadata = {
-  title: 'Vervice Admin',
-  description: 'Admin panel for Vervice car cleaning service',
+  title: 'Vervice Admin Portal',
+  description: 'Operations & Management Portal for Vervice Car Care',
 };
 
 export default function RootLayout({
@@ -15,8 +19,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className={font.variable}>
+      <body className={`${font.className} font-sans bg-slate-50 text-slate-900 antialiased`}>
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -30,24 +30,24 @@
     @apply border-border;
   }
   body {
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-slate-50 text-slate-900 antialiased font-sans;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 
 /* Custom premium styles */
 .premium-card {
-  @apply bg-white border border-slate-100 rounded-xl shadow-premium hover:shadow-premium-hover transition-all duration-300;
+  @apply bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300;
 }
 
 .premium-input {
-  @apply bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all;
+  @apply bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all;
 }
 
 .premium-button-primary {
-  @apply bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition-all shadow-sm hover:shadow active:scale-95;
+  @apply bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-4 py-2 text-sm font-semibold transition-all shadow-sm hover:shadow active:scale-95;
 }
 
 .premium-button-secondary {
-  @apply bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg px-4 py-2 text-sm font-medium transition-all active:scale-95;
+  @apply bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl px-4 py-2 text-sm font-semibold transition-all active:scale-95;
 }
