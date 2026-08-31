@@ -32,7 +32,7 @@ export default function BannerMobilePreview({
   const [deviceType, setDeviceType] = useState<'ios' | 'android'>('ios');
 
   return (
-    <div className="flex flex-col items-center space-y-3">
+    <div className="flex flex-col items-center space-y-3 w-full">
       {/* Device Switcher */}
       <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
         <button
@@ -59,8 +59,8 @@ export default function BannerMobilePreview({
 
       {/* Phone Frame */}
       <div
-        className={`w-[320px] bg-slate-950 p-3 rounded-[40px] shadow-2xl border-4 border-slate-800 relative select-none overflow-hidden ${
-          deviceType === 'ios' ? 'ring-8 ring-slate-900/50' : 'rounded-[32px]'
+        className={`w-full max-w-[320px] bg-slate-950 p-3 rounded-[40px] shadow-2xl border-4 border-slate-800 relative select-none overflow-hidden ${
+          deviceType === 'ios' ? 'ring-4 sm:ring-8 ring-slate-900/50' : 'rounded-[32px]'
         }`}
       >
         {/* Dynamic Island / Camera Notch */}
@@ -103,7 +103,7 @@ export default function BannerMobilePreview({
           <div className="flex-1 p-3.5 space-y-3 overflow-y-auto scrollbar-none">
             {/* ── LIVE PREVIEW BANNER CARD ── */}
             <div className="relative rounded-2xl overflow-hidden shadow-md bg-gradient-to-br from-emerald-600 to-teal-800 text-white min-h-[140px] flex flex-col justify-end p-3.5">
-              {banner.imageUrl && (
+              {banner?.imageUrl && (
                 <img
                   src={banner.imageUrl}
                   alt={banner.title}
@@ -115,9 +115,9 @@ export default function BannerMobilePreview({
                   Special Announcement
                 </span>
                 <h4 className="text-xs font-black leading-snug drop-shadow-sm line-clamp-2">
-                  {banner.title || 'Your Banner Title Here'}
+                  {banner?.title || 'Your Banner Title Here'}
                 </h4>
-                {banner.subtitle && (
+                {banner?.subtitle && (
                   <p className="text-[10px] text-emerald-100 font-medium line-clamp-2 leading-tight">
                     {banner.subtitle}
                   </p>
