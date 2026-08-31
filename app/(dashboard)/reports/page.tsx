@@ -25,7 +25,6 @@ export default function ReportsPage() {
   const { selectedCommunity, selectedCommunityObj } = useCommunity();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<'30d' | '90d' | 'ytd'>('30d');
 
   useEffect(() => {
     setLoading(true);
@@ -61,12 +60,15 @@ export default function ReportsPage() {
     return (
       <div className="flex flex-col items-center justify-center h-80 space-y-3">
         <div className="animate-spin w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full" />
-        <p className="text-xs font-semibold text-slate-500">Aggregating financial and car analytics...</p>
+        <p className="text-xs font-semibold text-slate-500">Aggregating live financial and car analytics from Firestore...</p>
       </div>
     );
   }
 
   const isAll = selectedCommunity === 'ALL';
+  const latestGrowth = data?.monthlyTrends && data.monthlyTrends.length > 0 
+    ? data.monthlyTrends[data.monthlyTrends.length - 1].growth 
+    : '+0%';
 
   return (
     <div className="space-y-6">
@@ -75,7 +77,7 @@ export default function ReportsPage() {
         <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Badge variant="success">Executive Business Intelligence</Badge>
+              <Badge variant="success">Live Business Intelligence</Badge>
               <Badge variant="outline">
                 {isAll ? '🌐 Global Scope' : `🏢 ${selectedCommunityObj?.name || selectedCommunity}`}
               </Badge>
@@ -85,7 +87,7 @@ export default function ReportsPage() {
               Monthly Revenue, Fleet Volume & Growth Analytics
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Comprehensive report on subscription recurring revenue, car volume growth, and society unit economics
+              Live data computed directly from verified Firestore payments, subscription bookings, and community hubs
             </p>
           </div>
 
@@ -117,10 +119,10 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent className="p-5 pt-0">
             <p className="text-2xl font-black text-slate-900 tracking-tight">
-              {formatCurrency(data?.totalRevenue || 42800)}
+              {formatCurrency(data?.totalRevenue || 0)}
             </p>
             <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5" /> +24% vs last month
+              <TrendingUp className="w-3.5 h-3.5" /> {latestGrowth} vs previous period
             </p>
           </CardContent>
         </Card>
@@ -137,11 +139,11 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent className="p-5 pt-0">
             <p className="text-2xl font-black text-slate-900 tracking-tight">
-              {data?.totalCars || 34}{' '}
+              {data?.totalCars || 0}{' '}
               <span className="text-xs font-semibold text-slate-400">vehicles</span>
             </p>
             <p className="text-[11px] text-blue-700 font-semibold mt-1 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" /> {data?.activeCars || 30} active daily washes
+              <CheckCircle2 className="w-3.5 h-3.5" /> {data?.activeCars || 0} active daily washes
             </p>
           </CardContent>
         </Card>
@@ -158,10 +160,10 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent className="p-5 pt-0">
             <p className="text-2xl font-black text-slate-900 tracking-tight">
-              {formatCurrency(data?.arpu || 899)}
+              {formatCurrency(data?.arpu || 0)}
             </p>
             <p className="text-[11px] text-slate-500 font-medium mt-1">
-              Monthly average subscription tier
+              Live average subscription tier
             </p>
           </CardContent>
         </Card>
@@ -178,10 +180,10 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent className="p-5 pt-0">
             <p className="text-2xl font-black text-teal-700 tracking-tight">
-              {data?.renewalRate || '94.2%'}
+              {data?.renewalRate || '100%'}
             </p>
             <p className="text-[11px] text-slate-500 font-medium mt-1">
-              High recurring loyalty
+              Active subscription ratio
             </p>
           </CardContent>
         </Card>
@@ -200,14 +202,14 @@ export default function ReportsPage() {
                 Month-over-month trajectory of revenue and subscribed car count
               </CardDescription>
             </div>
-            <Badge variant="success">+24% Growth</Badge>
+            <Badge variant="success">{latestGrowth}</Badge>
           </CardHeader>
 
           <CardContent className="p-6">
             <div className="space-y-4">
               {data?.monthlyTrends?.map((item: any) => {
                 const maxRevenue = Math.max(...data.monthlyTrends.map((t: any) => t.revenue || 1));
-                const percentage = Math.round((item.revenue / (maxRevenue || 1)) * 100);
+                const percentage = maxRevenue > 0 ? Math.round((item.revenue / maxRevenue) * 100) : 0;
 
                 return (
                   <div key={item.month} className="space-y-1.5">
@@ -224,7 +226,7 @@ export default function ReportsPage() {
                     <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden flex">
                       <div
                         className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full h-full transition-all duration-500"
-                        style={{ width: `${percentage}%` }}
+                        style={{ width: `${Math.max(percentage, item.revenue > 0 ? 5 : 0)}%` }}
                       />
                     </div>
                   </div>
@@ -241,15 +243,15 @@ export default function ReportsPage() {
               Vehicle Segment Breakdown
             </CardTitle>
             <CardDescription>
-              Fleet composition across vehicle sizes
+              Fleet composition from active vehicle bookings
             </CardDescription>
           </CardHeader>
 
           <CardContent className="p-6 space-y-4">
-            {Object.entries(data?.carSegments || { Hatchback: 8, Sedan: 14, SUV: 10, Luxury: 2 }).map(
-              ([segment, count]: [string, any]) => {
-                const total = data?.totalCars || 34;
-                const pct = Math.round((count / (total || 1)) * 100);
+            {data?.carSegments && Object.keys(data.carSegments).length > 0 ? (
+              Object.entries(data.carSegments).map(([segment, count]: [string, any]) => {
+                const total = data?.totalCars || 1;
+                const pct = Math.round((count / total) * 100);
 
                 return (
                   <div key={segment} className="space-y-1">
@@ -267,11 +269,13 @@ export default function ReportsPage() {
                     </div>
                   </div>
                 );
-              }
+              })
+            ) : (
+              <p className="text-xs text-slate-400 italic">No vehicle segment data recorded yet.</p>
             )}
 
             <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-500 leading-relaxed">
-              💡 <strong>Sedans and Compact SUVs</strong> constitute over 70% of cleaning demand. Recommended to keep microfiber towels color-coded per surface tier.
+              💡 Vehicle distribution is categorized dynamically based on registered vehicle models.
             </div>
           </CardContent>
         </Card>
@@ -285,7 +289,7 @@ export default function ReportsPage() {
               Community Hub Revenue & Unit Economics
             </CardTitle>
             <CardDescription>
-              Performance breakdown across individual gated societies
+              Live revenue and booking breakdown across individual gated societies
             </CardDescription>
           </div>
           <Badge variant="outline">{data?.communityBreakdown?.length || 0} Gated Hubs</Badge>
@@ -303,20 +307,30 @@ export default function ReportsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data?.communityBreakdown?.map((hub: any) => (
-                <TableRow key={hub.id}>
-                  <TableCell className="font-extrabold text-slate-900 flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-emerald-600" />
-                    {hub.name}
-                  </TableCell>
-                  <TableCell className="text-slate-500 text-xs">{hub.city || 'Bangalore'}</TableCell>
-                  <TableCell className="font-bold text-slate-900 text-xs">{hub.cars} cars</TableCell>
-                  <TableCell className="font-black text-emerald-700 text-xs">{formatCurrency(hub.revenue)}</TableCell>
-                  <TableCell>
-                    <Badge variant="success">Active 🟢</Badge>
+              {data?.communityBreakdown?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-6 text-slate-400">
+                    No community hub records found.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                data?.communityBreakdown?.map((hub: any) => (
+                  <TableRow key={hub.id}>
+                    <TableCell className="font-extrabold text-slate-900 flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-emerald-600" />
+                      {hub.name}
+                    </TableCell>
+                    <TableCell className="text-slate-500 text-xs">{hub.city || 'Bangalore'}</TableCell>
+                    <TableCell className="font-bold text-slate-900 text-xs">{hub.cars} cars</TableCell>
+                    <TableCell className="font-black text-emerald-700 text-xs">{formatCurrency(hub.revenue)}</TableCell>
+                    <TableCell>
+                      <Badge variant={hub.status === 'active' ? 'success' : 'secondary'}>
+                        {hub.status === 'active' ? 'Active 🟢' : hub.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
