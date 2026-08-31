@@ -13,11 +13,25 @@ export async function PUT(
     const body = await req.json();
     const db = getDb();
 
-    await db.collection('banners').doc(params.id).update({
+    const updatePayload: any = {
       ...body,
       updatedAt: Date.now(),
       updatedBy: admin.email,
-    });
+    };
+
+    if (body.priority !== undefined) {
+      updatePayload.sortOrder = Number(body.priority);
+      updatePayload.priority = Number(body.priority);
+    }
+    if (body.communityId !== undefined) {
+      updatePayload.communities = body.communityId === 'ALL' ? [] : [body.communityId];
+    }
+    if (body.actionUrl !== undefined) {
+      updatePayload.redirectUrl = body.actionUrl;
+      updatePayload.deepLink = body.actionUrl;
+    }
+
+    await db.collection('banners').doc(params.id).update(updatePayload);
 
     await writeAuditLog(
       admin.email,
