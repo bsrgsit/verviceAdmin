@@ -13,6 +13,7 @@
   Layout,
   Building2,
   History,
+  TrendingUp,
 } from 'lucide-react';
 
 export interface SubMenuItem {
@@ -37,13 +38,19 @@ export const primarySections: PrimarySection[] = [
     label: 'Overview',
     icon: LayoutDashboard,
     defaultHref: '/',
-    subRoutes: ['/'],
+    subRoutes: ['/', '/reports'],
     subItems: [
       {
         href: '/',
         label: 'Dashboard Overview',
         description: 'Real-time revenue, bookings & community operational metrics',
         icon: LayoutDashboard,
+      },
+      {
+        href: '/reports',
+        label: 'Revenue & Car Reports',
+        description: 'Monthly revenue, fleet car growth & retention metrics',
+        icon: TrendingUp,
       },
     ],
   },
