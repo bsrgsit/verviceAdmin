@@ -4,70 +4,18 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
   Building2,
-  FileText,
-  Users,
-  CreditCard,
-  Receipt,
-  UserCheck,
-  Battery,
-  Car,
-  HelpCircle,
-  History,
   ChevronDown,
   Check,
   Search,
   Globe,
-  Sliders,
-  Image as ImageIcon,
-  Layout,
   Settings,
   X,
+  Layers,
+  ArrowRight,
 } from 'lucide-react';
 import { useCommunity } from '@/lib/community-context';
-
-export const navigationGroups = [
-  {
-    title: 'Core Operations',
-    items: [
-      { href: '/', label: 'Dashboard Overview', icon: LayoutDashboard },
-      { href: '/bookings', label: 'Cleaning Schedules', icon: FileText },
-      { href: '/partners', label: 'Cleaner Fleet & Staff', icon: UserCheck },
-      { href: '/users', label: 'Residents & Vehicles', icon: Users },
-    ],
-  },
-  {
-    title: 'Finance & Billing',
-    items: [
-      { href: '/payments', label: 'Payment Approvals', icon: CreditCard },
-      { href: '/invoices', label: 'Monthly Invoices', icon: Receipt },
-    ],
-  },
-  {
-    title: 'On-Demand Services',
-    items: [
-      { href: '/battery-requests', label: 'Battery Jumpstart', icon: Battery },
-      { href: '/driver-requests', label: 'Driver Hire', icon: Car },
-      { href: '/support-tickets', label: 'Support Helpdesk', icon: HelpCircle },
-    ],
-  },
-  {
-    title: 'App & Content Control',
-    items: [
-      { href: '/app-config', label: 'Feature Flags & Config', icon: Sliders },
-      { href: '/banners', label: 'Banners & Promotions', icon: ImageIcon },
-      { href: '/screen-config', label: 'Screen & Barrier Text', icon: Layout },
-    ],
-  },
-  {
-    title: 'Configuration & System',
-    items: [
-      { href: '/communities', label: 'Manage Societies & Hubs', icon: Building2 },
-      { href: '/audit-log', label: 'System Audit Logs', icon: History },
-    ],
-  },
-];
+import { primarySections, getActivePrimarySection } from '@/lib/navigation-config';
 
 export default function Sidebar({
   isMobileOpen,
@@ -80,6 +28,8 @@ export default function Sidebar({
   const { selectedCommunity, setSelectedCommunity, communities, selectedCommunityObj } = useCommunity();
   const [showCommunityDropdown, setShowCommunityDropdown] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
+
+  const activeSection = getActivePrimarySection(pathname);
 
   const filteredCommunities = communities.filter((c) =>
     c.name.toLowerCase().includes(searchFilter.toLowerCase())
@@ -97,34 +47,8 @@ export default function Sidebar({
         isMobileOpen ? 'translate-x-0' : '-translate-x-full'
       }`}
     >
-      {/* ── 1. Brand Logo ── */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/70">
-        <Link
-          href="/"
-          className="flex items-center gap-3 group"
-          onClick={() => setIsMobileOpen?.(false)}
-        >
-          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-md shadow-emerald-950/60 group-hover:scale-105 transition-transform">
-            <Car className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="font-extrabold text-white text-base tracking-tight leading-tight">Vervice</h1>
-            <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Admin Control</p>
-          </div>
-        </Link>
-
-        {isMobileOpen && (
-          <button
-            onClick={() => setIsMobileOpen?.(false)}
-            className="lg:hidden w-8 h-8 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-
-      {/* ── 2. Prominent Community Scope Switcher ── */}
-      <div className="p-3 border-b border-slate-800 bg-slate-950/40 relative">
+      {/* ── 1. Top Section: Community Scope Switcher ── */}
+      <div className="p-4 border-b border-slate-800 bg-slate-950/60 relative">
         <div className="flex items-center justify-between mb-1.5 px-1">
           <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
             <Globe className="w-3.5 h-3.5" /> Community Scope
@@ -230,44 +154,74 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* ── 3. High Readability Navigation Menu ── */}
-      <nav className="flex-1 p-3 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
-        {navigationGroups.map((group) => (
-          <div key={group.title} className="space-y-1">
-            <h3 className="px-3 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
-              {group.title}
-            </h3>
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const isActive = item.href === '/' ? pathname === '/' : pathname?.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsMobileOpen?.(false)}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all font-semibold ${
-                      isActive
-                        ? 'bg-emerald-600 text-white font-bold shadow-md ring-1 ring-emerald-400/40'
-                        : 'text-slate-200 hover:bg-slate-800 hover:text-white'
-                    }`}
-                  >
-                    <item.icon className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? 'text-white' : 'text-slate-300'}`} />
-                    <span className="leading-tight">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+      {/* ── 2. Contextual Sub-Menu for Active Primary Section ── */}
+      <div className="p-3 border-b border-slate-800 bg-slate-950/20 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <activeSection.icon className="w-3.5 h-3.5" />
           </div>
-        ))}
+          <div>
+            <h2 className="text-xs font-extrabold text-white uppercase tracking-wider">
+              {activeSection.label}
+            </h2>
+            <p className="text-[10px] text-slate-400 font-medium">Sub-Menu Navigation</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. Sub-Menu Items List ── */}
+      <nav className="flex-1 p-3 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
+        {activeSection.subItems.map((item) => {
+          const isActive = item.href === '/' ? pathname === '/' : pathname === item.href || pathname.startsWith(item.href + '/');
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setIsMobileOpen?.(false)}
+              className={`flex flex-col p-3 rounded-2xl transition-all border ${
+                isActive
+                  ? 'bg-emerald-600 text-white font-bold shadow-md border-emerald-400/40'
+                  : 'bg-slate-850/50 border-slate-800 text-slate-200 hover:bg-slate-800 hover:text-white hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-white' : 'text-emerald-400'}`} />
+                  <span className="text-xs font-bold leading-tight">{item.label}</span>
+                </div>
+                {isActive && <ArrowRight className="w-3.5 h-3.5 text-white" />}
+              </div>
+              <p className={`text-[10px] mt-1.5 leading-relaxed ${isActive ? 'text-emerald-100' : 'text-slate-400'}`}>
+                {item.description}
+              </p>
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* ── 4. Bottom Info Footer ── */}
-      <div className="p-3 border-t border-slate-800 bg-slate-950/60">
-        <div className="flex items-center justify-between text-xs px-1">
-          <span className="text-slate-400 font-medium">Active Hub:</span>
-          <span className="font-extrabold text-emerald-400 truncate max-w-[120px]">
-            {selectedCommunity === 'ALL' ? 'Global' : selectedCommunityObj?.name || selectedCommunity}
-          </span>
+      {/* ── 4. Switch Primary Category on Mobile / Compact ── */}
+      <div className="p-3 border-t border-slate-800 bg-slate-950/80">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">
+          Switch Category
+        </p>
+        <div className="grid grid-cols-3 gap-1 text-[10px]">
+          {primarySections.map((sec) => {
+            const isCurrent = sec.id === activeSection.id;
+            return (
+              <Link
+                key={sec.id}
+                href={sec.defaultHref}
+                onClick={() => setIsMobileOpen?.(false)}
+                className={`p-1.5 rounded-lg text-center font-bold truncate transition-colors ${
+                  isCurrent
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-750 hover:text-white'
+                }`}
+              >
+                {sec.label.split(' ')[0]}
+              </Link>
+            );
+          })}
         </div>
       </div>
     </aside>

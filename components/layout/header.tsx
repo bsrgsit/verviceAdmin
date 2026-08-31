@@ -11,23 +11,13 @@ import {
   Building2,
   X,
   Menu,
-  ChevronDown,
-  LayoutDashboard,
-  FileText,
-  UserCheck,
-  Users,
-  CreditCard,
-  Receipt,
-  Battery,
   Car,
-  HelpCircle,
-  Sliders,
-  Image as ImageIcon,
-  Layout,
-  History,
+  ChevronRight,
+  Globe,
 } from 'lucide-react';
 import { useCommunity } from '@/lib/community-context';
 import CommandPalette from '@/components/ui/command-palette';
+import { primarySections, getActivePrimarySection } from '@/lib/navigation-config';
 
 export default function Header({
   onToggleMobileMenu,
@@ -41,7 +31,8 @@ export default function Header({
   const [user, setUser] = useState<{ email: string; role: string } | null>(null);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
+  const activeSection = getActivePrimarySection(pathname);
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -60,175 +51,71 @@ export default function Header({
     router.refresh();
   };
 
-  const getPageTitle = () => {
-    if (pathname === '/') return 'Dashboard Overview';
-    if (pathname === '/communities') return 'Societies & Communities';
-    if (pathname?.startsWith('/communities/')) return 'Community Hub Details';
-    if (pathname === '/payments') return 'Payment Verifications';
-    if (pathname === '/invoices') return 'Monthly Invoices';
-    if (pathname === '/bookings') return 'Cleaning Schedules';
-    if (pathname === '/users') return 'Residents Directory';
-    if (pathname === '/partners') return 'Cleaner Fleet';
-    if (pathname === '/battery-requests') return 'Battery Jumpstart';
-    if (pathname === '/driver-requests') return 'Driver Hire';
-    if (pathname === '/support-tickets') return 'Support Helpdesk';
-    if (pathname === '/app-config') return 'Feature Flags & Config';
-    if (pathname === '/banners') return 'Home Banners & Promos';
-    if (pathname === '/screen-config') return 'Screen & Barrier Text';
-    if (pathname === '/audit-log') return 'Admin Audit Logs';
-    return 'Vervice Admin';
-  };
-
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 lg:px-6 py-2.5 shadow-2xs">
-        <div className="flex items-center justify-between gap-3">
-          {/* Left: Mobile Toggle & Page Title */}
+      <header className="sticky top-0 z-40 bg-slate-900 border-b border-slate-800 text-slate-100 shadow-md">
+        {/* Top Header Row */}
+        <div className="px-4 lg:px-6 py-2.5 flex items-center justify-between gap-4">
+          {/* Left: Mobile Toggle & Brand & Active Section Breadcrumb */}
           <div className="flex items-center gap-3">
             <button
               onClick={onToggleMobileMenu}
-              className="lg:hidden w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200"
+              className="lg:hidden w-9 h-9 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div>
-              <h1 className="text-sm font-black text-slate-900 tracking-tight leading-tight">
-                {getPageTitle()}
-              </h1>
-              <p className="text-[10px] text-slate-400 hidden xl:block font-medium">
-                Vervice Central Command
-              </p>
+
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center text-white shadow-sm">
+                <Car className="w-4 h-4" />
+              </div>
+              <span className="font-extrabold text-white text-sm tracking-tight hidden sm:inline">Vervice</span>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-500 hidden sm:inline" />
+              <span className="text-xs font-bold text-emerald-400">
+                {activeSection.label}
+              </span>
             </div>
           </div>
 
-          {/* ── SLEEK TOP HORIZONTAL MENU FOR DESKTOP ── */}
-          <nav className="hidden 2xl:flex items-center gap-1 text-xs font-bold text-slate-600">
-            {/* Dashboard */}
-            <Link
-              href="/"
-              className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-                pathname === '/' ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
-            </Link>
-
-            {/* Operations Dropdown */}
-            <div
-              className="relative"
-              onMouseEnter={() => setActiveDropdown('ops')}
-              onMouseLeave={() => setActiveDropdown(null)}
-            >
-              <button
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${
-                  ['/bookings', '/partners', '/users'].includes(pathname)
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" /> Operations <ChevronDown className="w-3 h-3 opacity-60" />
-              </button>
-              {activeDropdown === 'ops' && (
-                <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in duration-100">
-                  <Link href="/bookings" className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                    <FileText className="w-3.5 h-3.5 text-emerald-600" /> Cleaning Schedules
-                  </Link>
-                  <Link href="/partners" className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                    <UserCheck className="w-3.5 h-3.5 text-blue-600" /> Cleaner Fleet & Staff
-                  </Link>
-                  <Link href="/users" className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                    <Users className="w-3.5 h-3.5 text-purple-600" /> Residents & Vehicles
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Finance Dropdown */}
-            <div
-              className="relative"
-              onMouseEnter={() => setActiveDropdown('finance')}
-              onMouseLeave={() => setActiveDropdown(null)}
-            >
-              <button
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${
-                  ['/payments', '/invoices'].includes(pathname)
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <CreditCard className="w-3.5 h-3.5" /> Finance <ChevronDown className="w-3 h-3 opacity-60" />
-              </button>
-              {activeDropdown === 'finance' && (
-                <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in duration-100">
-                  <Link href="/payments" className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                    <CreditCard className="w-3.5 h-3.5 text-amber-500" /> Payment Approvals
-                  </Link>
-                  <Link href="/invoices" className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                    <Receipt className="w-3.5 h-3.5 text-emerald-600" /> Monthly Invoices
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* App Control Dropdown */}
-            <div
-              className="relative"
-              onMouseEnter={() => setActiveDropdown('app_control')}
-              onMouseLeave={() => setActiveDropdown(null)}
-            >
-              <button
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${
-                  ['/app-config', '/banners', '/screen-config'].includes(pathname)
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <Sliders className="w-3.5 h-3.5 text-emerald-600" /> App Control <ChevronDown className="w-3 h-3 opacity-60" />
-              </button>
-              {activeDropdown === 'app_control' && (
-                <div className="absolute left-0 top-full mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in duration-100">
-                  <Link href="/app-config" className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                    <Sliders className="w-3.5 h-3.5 text-emerald-600" /> Feature Flags & Config
-                  </Link>
-                  <Link href="/banners" className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                    <ImageIcon className="w-3.5 h-3.5 text-blue-600" /> Home Banners & Promos
-                  </Link>
-                  <Link href="/screen-config" className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                    <Layout className="w-3.5 h-3.5 text-purple-600" /> Screen & Barrier Text
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Hubs */}
-            <Link
-              href="/communities"
-              className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-                pathname === '/communities' ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <Building2 className="w-3.5 h-3.5" /> Societies
-            </Link>
+          {/* Center: Primary Section Navigation Tabs */}
+          <nav className="hidden md:flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800 text-xs font-bold">
+            {primarySections.map((section) => {
+              const isActive = activeSection.id === section.id;
+              return (
+                <Link
+                  key={section.id}
+                  href={section.defaultHref}
+                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+                    isActive
+                      ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <section.icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  <span>{section.label}</span>
+                </Link>
+              );
+            })}
           </nav>
 
-          {/* Right: Active Scope Pill + Search + Quick Actions + User */}
-          <div className="flex items-center gap-2.5">
+          {/* Right: Scope Pill + Search + Quick Actions + User */}
+          <div className="flex items-center gap-2">
             {/* Active Community Scope Pill */}
             {selectedCommunity !== 'ALL' ? (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-bold text-emerald-800 shadow-2xs">
-                <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-950/80 border border-emerald-700/60 rounded-full text-xs font-bold text-emerald-300">
+                <Building2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                 <span className="max-w-[120px] truncate">{selectedCommunityObj?.name || selectedCommunity}</span>
                 <button
                   onClick={() => setSelectedCommunity('ALL')}
-                  title="Reset scope"
-                  className="w-4 h-4 rounded-full bg-emerald-200 hover:bg-emerald-300 text-emerald-900 flex items-center justify-center"
+                  title="Reset scope to All"
+                  className="w-3.5 h-3.5 rounded-full bg-emerald-800 hover:bg-emerald-700 text-emerald-100 flex items-center justify-center"
                 >
                   <X className="w-2.5 h-2.5" />
                 </button>
               </div>
             ) : (
-              <span className="hidden md:flex text-xs font-semibold text-slate-400 items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="hidden xl:flex text-xs font-semibold text-slate-400 items-center gap-1.5 px-2.5 py-1 bg-slate-800/80 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 All Societies
               </span>
             )}
@@ -236,11 +123,11 @@ export default function Header({
             {/* Quick Search */}
             <button
               onClick={() => setShowCommandPalette(true)}
-              className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200/70 border border-slate-200 rounded-xl text-xs font-medium text-slate-600 transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-xl text-xs font-medium text-slate-300 transition-colors"
             >
               <Search className="w-3.5 h-3.5 text-slate-400" />
               <span>Search</span>
-              <kbd className="text-[9px] font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-500">
+              <kbd className="text-[9px] font-mono bg-slate-900 px-1 py-0.5 rounded border border-slate-700 text-slate-400">
                 ⌘K
               </kbd>
             </button>
@@ -249,18 +136,18 @@ export default function Header({
             <div className="relative">
               <button
                 onClick={() => setShowQuickActions(!showQuickActions)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Actions</span>
+                <span className="hidden sm:inline">Action</span>
               </button>
 
               {showQuickActions && (
                 <div
-                  className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 py-1.5 animate-in fade-in duration-150"
+                  className="absolute right-0 mt-2 w-52 bg-slate-900 border border-slate-700 rounded-2xl shadow-xl z-50 py-1.5 text-slate-200 animate-in fade-in duration-150"
                   onMouseLeave={() => setShowQuickActions(false)}
                 >
-                  <div className="px-3 py-1.5 border-b border-slate-100">
+                  <div className="px-3 py-1.5 border-b border-slate-800">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                       Quick Operations
                     </p>
@@ -268,25 +155,25 @@ export default function Header({
                   <Link
                     href="/communities"
                     onClick={() => setShowQuickActions(false)}
-                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold hover:bg-slate-800 text-slate-200 hover:text-white"
                   >
-                    <Building2 className="w-4 h-4 text-emerald-600" />
+                    <Building2 className="w-4 h-4 text-emerald-400" />
                     <span>Add New Society</span>
                   </Link>
                   <Link
                     href="/bookings"
                     onClick={() => setShowQuickActions(false)}
-                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold hover:bg-slate-800 text-slate-200 hover:text-white"
                   >
-                    <FileText className="w-4 h-4 text-blue-600" />
+                    <Car className="w-4 h-4 text-blue-400" />
                     <span>Assign Booking</span>
                   </Link>
                   <Link
                     href="/banners"
                     onClick={() => setShowQuickActions(false)}
-                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold hover:bg-slate-800 text-slate-200 hover:text-white"
                   >
-                    <ImageIcon className="w-4 h-4 text-purple-600" />
+                    <Plus className="w-4 h-4 text-purple-400" />
                     <span>Publish App Banner</span>
                   </Link>
                 </div>
@@ -296,7 +183,7 @@ export default function Header({
             {/* Logout */}
             <button
               onClick={handleLogout}
-              className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-rose-900/60 hover:text-rose-300 text-slate-400 flex items-center justify-center transition-colors"
               title="Log out"
             >
               <LogOut className="w-4 h-4" />
