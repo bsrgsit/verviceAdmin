@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
+import { getAuthenticatedAdmin, canAccessCommunityById } from '@/lib/admin-check';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,14 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!await canAccessCommunityById(admin, params.id)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     const db = getDb();
     
     // Get community name from the community document

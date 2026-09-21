@@ -1,8 +1,14 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
+import { getAuthenticatedAdmin } from '@/lib/admin-check';
 
 export async function GET(req: NextRequest) {
   try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const db = getDb();
     const communityId = req.nextUrl.searchParams.get('communityId');
 
