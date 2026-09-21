@@ -1,4 +1,4 @@
-﻿import {
+import {
   LayoutDashboard,
   FileText,
   UserCheck,
@@ -14,6 +14,8 @@
   Building2,
   History,
   TrendingUp,
+  Sparkles,
+  Smartphone,
 } from 'lucide-react';
 
 export interface SubMenuItem {
@@ -106,9 +108,15 @@ export const primarySections: PrimarySection[] = [
     id: 'services',
     label: 'Services & Requests',
     icon: Battery,
-    defaultHref: '/battery-requests',
-    subRoutes: ['/battery-requests', '/driver-requests', '/support-tickets'],
+    defaultHref: '/services-catalog',
+    subRoutes: ['/services-catalog', '/battery-requests', '/driver-requests', '/support-tickets'],
     subItems: [
+      {
+        href: '/services-catalog',
+        label: 'Services & Pricing Catalog',
+        description: 'Manage wash plans, 4W/2W tariffs, add-ons & extras',
+        icon: Sparkles,
+      },
       {
         href: '/battery-requests',
         label: 'Battery Jumpstart',
@@ -134,7 +142,7 @@ export const primarySections: PrimarySection[] = [
     label: 'App & Content',
     icon: Sliders,
     defaultHref: '/app-config',
-    subRoutes: ['/app-config', '/banners', '/screen-config'],
+    subRoutes: ['/app-config', '/banners', '/mobile-layout', '/screen-config'],
     subItems: [
       {
         href: '/app-config',
@@ -147,6 +155,12 @@ export const primarySections: PrimarySection[] = [
         label: 'Banners & Promotions',
         description: 'Home screen banners with live phone preview',
         icon: ImageIcon,
+      },
+      {
+        href: '/mobile-layout',
+        label: 'Mobile Layout & Quick Actions',
+        description: 'Customize 8 circular quick actions & promo tiles',
+        icon: Smartphone,
       },
       {
         href: '/screen-config',

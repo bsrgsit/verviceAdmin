@@ -38,7 +38,10 @@ interface Payment {
   userId: string;
   userName: string;
   userPhone: string;
+  serviceName?: string;
   amount: number;
+  expectedAmount?: number;
+  isUnderpaid?: boolean;
   upiAppName: string;
   upiTransactionId: string;
   status: string;
@@ -232,9 +235,15 @@ export default function PaymentsPage() {
       const res = await fetch(`/api/payments/${paymentId}/verify`, {
         method: 'POST',
       });
-      if (res.ok) {
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to verify payment');
+      } else {
         await fetchPayments();
       }
+    } catch (error: any) {
+      console.error('Failed to verify payment:', error);
+      alert(error.message || 'An error occurred during verification');
     } finally {
       setProcessing(null);
     }
@@ -246,9 +255,15 @@ export default function PaymentsPage() {
       const res = await fetch(`/api/payments/${paymentId}/reject`, {
         method: 'POST',
       });
-      if (res.ok) {
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to reject payment');
+      } else {
         await fetchPayments();
       }
+    } catch (error: any) {
+      console.error('Failed to reject payment:', error);
+      alert(error.message || 'An error occurred during rejection');
     } finally {
       setProcessing(null);
     }
@@ -263,10 +278,16 @@ export default function PaymentsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentIds: Array.from(selectedPayments) }),
       });
-      if (res.ok) {
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to bulk verify payments');
+      } else {
         setSelectedPayments(new Set());
         await fetchPayments();
       }
+    } catch (error: any) {
+      console.error('Failed to bulk verify payments:', error);
+      alert(error.message || 'An error occurred during bulk verification');
     } finally {
       setProcessing(null);
     }
@@ -394,6 +415,16 @@ export default function PaymentsPage() {
         </div>
       )}
 
+      {/* Underpayment Alert */}
+      {payments.some((p) => p.isUnderpaid && !p.adminVerified) && (
+        <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-200/60 rounded-xl">
+          <AlertTriangle className="w-5 h-5 text-rose-500 flex-shrink-0" />
+          <p className="text-sm text-rose-800 font-medium">
+            Underpayment mismatch detected! One or more payments have amounts lower than their invoice or plan price. Verification is automatically blocked.
+          </p>
+        </div>
+      )}
+
       {/* Table & Filtering */}
       {loading ? (
         <div className="space-y-4 animate-pulse">
@@ -498,9 +529,21 @@ export default function PaymentsPage() {
                       <p className="text-xs text-slate-400 mt-0.5">{payment.userPhone}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-bold text-slate-900">
-                        {formatCurrency(payment.amount)}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className={`font-bold ${payment.isUnderpaid ? 'text-rose-600' : 'text-slate-900'}`}>
+                          {formatCurrency(payment.amount)}
+                        </span>
+                        {payment.isUnderpaid && (
+                          <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded w-fit mt-0.5">
+                            Underpaid (Exp. {formatCurrency(payment.expectedAmount || 0)})
+                          </span>
+                        )}
+                        {payment.serviceName && (
+                          <span className="text-[11px] text-slate-400 font-medium">
+                            {payment.serviceName}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs font-semibold text-slate-500 capitalize bg-slate-100 px-2 py-0.5 rounded">

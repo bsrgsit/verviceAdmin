@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/firebase-admin';
 import { writeAuditLog, getAuthenticatedAdmin, enforceSuperAdmin, canAccessUser } from '@/lib/admin-check';
 
@@ -41,9 +41,41 @@ export async function GET() {
       });
     }
 
+    // Batch fetch associated invoices
+    const invoiceIds = Array.from(new Set(snapshot.docs.map(doc => doc.data().invoiceId).filter(Boolean)));
+    const invoiceMap = new Map<string, any>();
+    if (invoiceIds.length > 0) {
+      const invoiceRefs = invoiceIds.map(iid => db.collection('invoices').doc(iid));
+      const invoiceSnaps = await db.getAll(...invoiceRefs);
+      invoiceSnaps.forEach((invDoc) => {
+        if (invDoc.exists) {
+          invoiceMap.set(invDoc.id, invDoc.data());
+        }
+      });
+    }
+
+    // Batch fetch associated bookings
+    const bookingIds = Array.from(new Set(snapshot.docs.map(doc => doc.data().bookingId).filter(Boolean)));
+    const bookingMap = new Map<string, any>();
+    if (bookingIds.length > 0) {
+      const bookingRefs = bookingIds.map(bid => db.collection('bookings').doc(bid));
+      const bookingSnaps = await db.getAll(...bookingRefs);
+      bookingSnaps.forEach((bDoc) => {
+        if (bDoc.exists) {
+          bookingMap.set(bDoc.id, bDoc.data());
+        }
+      });
+    }
+
     let payments = snapshot.docs.map((doc) => {
       const data = doc.data();
       const userData = userMap.get(data.userId);
+      const invData = data.invoiceId ? invoiceMap.get(data.invoiceId) : null;
+      const bData = data.bookingId ? bookingMap.get(data.bookingId) : null;
+
+      const expectedAmount = Number(invData?.amount ?? bData?.price ?? 0);
+      const actualAmount = Number(data.amount ?? 0);
+      const isUnderpaid = expectedAmount > 0 && actualAmount < expectedAmount;
 
       return {
         id: doc.id,
@@ -51,6 +83,9 @@ export async function GET() {
         userName: userData?.name || 'Unknown',
         userPhone: userData?.phoneNumber || '',
         community: userData?.community || '',
+        serviceName: invData?.serviceName || bData?.serviceName || '',
+        expectedAmount,
+        isUnderpaid,
         duplicate: data.upiTransactionId
           ? (txnIdCounts.get(data.upiTransactionId) || 0) > 1
           : false,
@@ -101,20 +136,20 @@ export async function POST(request: NextRequest) {
       upiAppName: upiAppName || 'Manual Collection',
       upiTransactionId: upiTransactionId || '',
       status: status || 'pending_manual_verify',
-      adminVerified: adminVerified === undefined ? false : !!adminVerified,
+      adminVerified: adminVerified ?? false,
+      adminVerifiedAt: adminVerified ? now : 0,
       adminNotes: adminNotes || '',
-      createdAt: createdAt ? Number(createdAt) : now,
+      createdAt: createdAt ? new Date(createdAt).getTime() : now,
     };
 
     const docRef = await db.collection('payments').add(newPayment);
 
-    // Write Audit Log
     await writeAuditLog(
       admin.email,
       'payment_created',
       docRef.id,
       'payment',
-      `Recorded manual payment of ${amount} INR for user ${userId}`
+      `Created manual payment of ${amount} INR for user ${userId}`
     );
 
     return NextResponse.json({ id: docRef.id, ...newPayment }, { status: 201 });

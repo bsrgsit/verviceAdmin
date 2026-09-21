@@ -1,6 +1,6 @@
-﻿'use client';
+'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -35,6 +35,18 @@ export default function Header({
   const { selectedCommunity, setSelectedCommunity, selectedCommunityObj } = useCommunity();
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+
+  // Global Ctrl+K / Cmd+K listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setShowCommandPalette((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const activeSection = getActivePrimarySection(pathname);
   const currentSubItem = activeSection.subItems.find(

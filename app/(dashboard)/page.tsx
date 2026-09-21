@@ -1,7 +1,8 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import ActionInbox from '@/components/dashboard/action-inbox';
 import {
   Users,
   FileText,
@@ -18,6 +19,8 @@ import {
   Globe,
   MapPin,
   Check,
+  CalendarCheck,
+  Zap,
 } from 'lucide-react';
 import { useCommunity } from '@/lib/community-context';
 import { formatCurrency, timeAgo } from '@/lib/utils';
@@ -55,14 +58,30 @@ export default function DashboardPage() {
   const [communities, setCommunities] = useState<any[]>([]);
   const [partners, setPartners] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [actionData, setActionData] = useState<{
+    totalUrgent: number;
+    pendingPayments: any[];
+    cancellationRequests: any[];
+    pendingDrivers: any[];
+    pendingBatteries: any[];
+    openTickets: any[];
+  }>({
+    totalUrgent: 0,
+    pendingPayments: [],
+    cancellationRequests: [],
+    pendingDrivers: [],
+    pendingBatteries: [],
+    openTickets: [],
+  });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
+  const loadData = () => {
     const statsUrl =
       selectedCommunity !== 'ALL'
         ? `/api/communities/${selectedCommunity}/stats`
         : '/api/dashboard/stats';
+
+    const actionInboxUrl = `/api/dashboard/action-inbox?community=${selectedCommunity}`;
 
     Promise.all([
       fetch(statsUrl).then((r) => r.json()),
@@ -71,8 +90,9 @@ export default function DashboardPage() {
       fetch('/api/communities').then((r) => r.json()),
       fetch('/api/partners').then((r) => r.json()),
       fetch('/api/bookings').then((r) => r.json()),
+      fetch(actionInboxUrl).then((r) => r.json()).catch(() => null),
     ])
-      .then(([statsData, activityData, pendingData, communitiesData, partnersData, bookingsData]) => {
+      .then(([statsData, activityData, pendingData, communitiesData, partnersData, bookingsData, actionInboxData]) => {
         setStats(statsData?.error ? null : statsData);
         setRecentActivity(Array.isArray(activityData) ? activityData : []);
 
@@ -80,6 +100,10 @@ export default function DashboardPage() {
         const rawCommunities = Array.isArray(communitiesData) ? communitiesData : [];
         const rawPartners = Array.isArray(partnersData) ? partnersData : [];
         const rawBookings = Array.isArray(bookingsData) ? bookingsData : [];
+
+        if (actionInboxData && typeof actionInboxData.totalUrgent === 'number') {
+          setActionData(actionInboxData);
+        }
 
         if (selectedCommunity !== 'ALL') {
           const commName = selectedCommunityObj?.name || selectedCommunity;
@@ -119,6 +143,11 @@ export default function DashboardPage() {
         }
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    loadData();
   }, [selectedCommunity, selectedCommunityObj]);
 
   if (loading) {
@@ -132,6 +161,21 @@ export default function DashboardPage() {
 
   const isAllView = selectedCommunity === 'ALL';
   const activeCommunityData = !isAllView ? communities[0] || selectedCommunityObj : null;
+
+  // Calculate Today's Operations Pulse (Asia/Kolkata timezone)
+  const todayIST = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+
+  const activeDailyBookings = bookings.filter((b: any) => b.status === 'active');
+  const cleanedTodayBookings = activeDailyBookings.filter((b: any) => b.lastCleanedDate === todayIST);
+  const pendingCleanTodayCount = Math.max(0, activeDailyBookings.length - cleanedTodayBookings.length);
+  const completionPercentage = activeDailyBookings.length > 0
+    ? Math.round((cleanedTodayBookings.length / activeDailyBookings.length) * 100)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -172,7 +216,63 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* ── 2. EXECUTIVE KPI CARDS (SHADCN CARD) ── */}
+      {/* ── 2. URGENT ACTION INBOX ── */}
+      <ActionInbox data={actionData} onRefresh={loadData} />
+
+      {/* ── 3. TODAY'S OPERATIONS PULSE ── */}
+      <Card className="border-slate-200/80 bg-white shadow-xs overflow-hidden">
+        <CardContent className="p-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                  <Zap className="w-4 h-4 text-emerald-600" />
+                </div>
+                <h3 className="font-extrabold text-slate-900 text-sm tracking-tight flex items-center gap-2">
+                  Today's Operations Pulse
+                  <Badge variant="outline" className="text-[10px] font-mono py-0">{todayIST}</Badge>
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500">
+                Daily morning wash schedule progress across {isAllView ? 'all active communities' : activeCommunityData?.name || 'hub'}.
+              </p>
+            </div>
+
+            {/* Live Progress Bar & Quick Metrics */}
+            <div className="flex items-center gap-6">
+              <div className="text-right">
+                <div className="text-xs text-slate-500 font-medium">Completed Washes</div>
+                <div className="text-lg font-black text-slate-900">
+                  <span className="text-emerald-600">{cleanedTodayBookings.length}</span>
+                  <span className="text-slate-400 text-xs font-normal"> / {activeDailyBookings.length} cars</span>
+                </div>
+              </div>
+
+              <div className="w-32 sm:w-44">
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="font-bold text-slate-700">{completionPercentage}%</span>
+                  <span className="text-slate-400">{pendingCleanTodayCount} remaining</span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                    style={{ width: `${completionPercentage}%` }}
+                  />
+                </div>
+              </div>
+
+              <Link href="/bookings">
+                <Button size="sm" variant="outline" className="text-xs gap-1.5 h-8">
+                  <CalendarCheck className="w-3.5 h-3.5" />
+                  Live Wash Grid
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── 4. EXECUTIVE KPI CARDS (SHADCN CARD) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Revenue */}
         <Link href="/payments" className="group">
