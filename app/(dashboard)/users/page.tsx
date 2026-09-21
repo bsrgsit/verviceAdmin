@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Search,
   Loader2,
@@ -46,15 +47,27 @@ interface User {
   };
 }
 
-export default function UsersPage() {
+function UsersContent() {
+  const searchParams = useSearchParams();
+  const urlId = searchParams.get('id');
+  const urlSearch = searchParams.get('search');
+  const [hasAutoOpened, setHasAutoOpened] = useState(false);
+
   const [users, setUsers] = useState<User[]>([]);
   const [communities, setCommunities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useState(urlSearch || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch || '');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
+
+  useEffect(() => {
+    if (urlSearch) {
+      setSearch(urlSearch);
+      setDebouncedSearch(urlSearch);
+    }
+  }, [urlSearch]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -318,19 +331,53 @@ export default function UsersPage() {
   const { selectedCommunity, selectedCommunityObj } = useCommunity();
 
   const filteredUsers = users.filter((u) => {
-    if (selectedCommunity !== 'ALL') {
+    if (!debouncedSearch && selectedCommunity !== 'ALL') {
       const commName = selectedCommunityObj?.name || selectedCommunity;
       if (u.community !== commName && u.community !== selectedCommunity) return false;
     }
     if (!debouncedSearch) return true;
-    const s = debouncedSearch.toLowerCase();
+    const s = debouncedSearch.toLowerCase().trim();
+    const normSearch = s.replace(/[\s-]/g, '');
+    const hasMatchingVehicle = u.vehicles?.some((v) => {
+      const reg = (v.registrationNumber || '').toLowerCase();
+      const normReg = reg.replace(/[\s-]/g, '');
+      return (normReg && normSearch && normReg.includes(normSearch)) || reg.includes(s);
+    });
     return (
+      hasMatchingVehicle ||
       u.name?.toLowerCase().includes(s) ||
       u.phoneNumber?.includes(debouncedSearch) ||
       u.community?.toLowerCase().includes(s) ||
-      u.email?.toLowerCase().includes(s)
+      u.email?.toLowerCase().includes(s) ||
+      u.id?.toLowerCase().includes(s)
     );
   });
+
+  useEffect(() => {
+    if (users.length > 0 && !hasAutoOpened) {
+      if (urlId) {
+        const found = users.find((u) => u.id === urlId);
+        if (found) {
+          openViewModal(found);
+          setHasAutoOpened(true);
+        }
+      } else if (urlSearch) {
+        const normSearch = urlSearch.replace(/[\s-]/g, '').toLowerCase();
+        const found = users.find(
+          (u) =>
+            u.id === urlSearch ||
+            u.name?.toLowerCase().includes(urlSearch.toLowerCase()) ||
+            u.vehicles?.some(
+              (v) => (v.registrationNumber || '').replace(/[\s-]/g, '').toLowerCase() === normSearch
+            )
+        );
+        if (found) {
+          openViewModal(found);
+          setHasAutoOpened(true);
+        }
+      }
+    }
+  }, [users, urlId, urlSearch, hasAutoOpened]);
 
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -1156,5 +1203,33 @@ export default function UsersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-4 animate-pulse p-6">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+            <div className="bg-gray-50 h-12 border-b border-gray-200"></div>
+            <div className="divide-y divide-gray-100">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="p-4 flex items-center justify-between space-x-4">
+                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <UsersContent />
+    </Suspense>
   );
 }

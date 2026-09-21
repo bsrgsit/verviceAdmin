@@ -34,12 +34,40 @@ export async function GET(request: NextRequest) {
     ]);
 
     const isSuperAdmin = enforceSuperAdmin(admin);
+    const normQ = q.replace(/[\s-]/g, '').toLowerCase();
 
-    // 1. Search Residents
     const residents: any[] = [];
     const vehiclesSet = new Set<string>();
     const vehicles: any[] = [];
 
+    // 1. Search Bookings for Vehicle Regs & Service Names (High priority for operational car search)
+    bookingsSnap.docs.forEach((doc: any) => {
+      const b = doc.data();
+      if (!isSuperAdmin && !admin.assignedCommunities.includes(b.community)) return;
+
+      const reg = (b.vehicleReg || '').toLowerCase();
+      const normReg = reg.replace(/[\s-]/g, '');
+      const vName = (b.vehicleName || '').toLowerCase();
+      const uName = (b.userName || '').toLowerCase();
+
+      if (reg.includes(q) || (normQ.length >= 2 && normReg.includes(normQ)) || vName.includes(q) || uName.includes(q)) {
+        const rawKey = b.vehicleReg;
+        const normKey = (rawKey || '').replace(/[\s-]/g, '').toUpperCase();
+        if (normKey && !vehiclesSet.has(normKey) && vehicles.length < 8) {
+          vehiclesSet.add(normKey);
+          vehicles.push({
+            id: doc.id,
+            title: (rawKey || 'Vehicle').toUpperCase(),
+            subtitle: `${b.vehicleName || 'Vehicle'} • ${b.serviceName || 'Wash Plan'} • ${b.userName || 'Resident'} (${b.community || ''})`,
+            href: `/bookings?id=${doc.id}&search=${encodeURIComponent(rawKey || '')}`,
+            type: 'vehicle',
+            actionText: 'View Booking',
+          });
+        }
+      }
+    });
+
+    // 2. Search Residents and User-Registered Vehicles
     usersSnap.docs.forEach((doc: any) => {
       const u = doc.data();
       if (!isSuperAdmin && !admin.assignedCommunities.includes(u.community)) return;
@@ -55,53 +83,36 @@ export async function GET(request: NextRequest) {
             id: doc.id,
             title: u.name || 'Resident',
             subtitle: `${u.community || 'No Society'} • Flat ${u.flatNumber || 'N/A'} • ${u.phoneNumber || ''}`,
-            href: `/users?id=${doc.id}`,
+            href: `/users?id=${doc.id}&search=${encodeURIComponent(u.name || '')}`,
             type: 'resident',
           });
         }
       }
 
-      // Check vehicles registered under user
+      // Check vehicles registered under user that might not have an active booking
       if (Array.isArray(u.vehicles)) {
         u.vehicles.forEach((veh: any) => {
-          const reg = (veh.regNo || veh.registration || veh.plateNumber || '').toLowerCase();
-          const vName = (veh.name || veh.model || '').toLowerCase();
-          if (reg.includes(q) || vName.includes(q)) {
-            const key = veh.regNo || veh.registration || veh.plateNumber;
-            if (key && !vehiclesSet.has(key) && vehicles.length < 6) {
-              vehiclesSet.add(key);
+          const rawKey = veh.registrationNumber || veh.regNo || veh.registration || veh.plateNumber;
+          const reg = (rawKey || '').toLowerCase();
+          const normReg = reg.replace(/[\s-]/g, '');
+          const vehicleDisplayName = [veh.make, veh.model].filter(Boolean).join(' ') || veh.name || 'Vehicle';
+          const vName = vehicleDisplayName.toLowerCase();
+
+          if (reg.includes(q) || (normQ.length >= 2 && normReg.includes(normQ)) || vName.includes(q)) {
+            const normKey = (rawKey || '').replace(/[\s-]/g, '').toUpperCase();
+            if (normKey && !vehiclesSet.has(normKey) && vehicles.length < 8) {
+              vehiclesSet.add(normKey);
               vehicles.push({
-                id: `${doc.id}_${key}`,
-                title: key.toUpperCase(),
-                subtitle: `${veh.name || veh.model || 'Vehicle'} • ${u.name || 'Resident'} (${u.community || ''})`,
-                href: `/users?id=${doc.id}`,
+                id: `${doc.id}_${normKey}`,
+                title: (rawKey || 'Vehicle').toUpperCase(),
+                subtitle: `${vehicleDisplayName} • Resident: ${u.name || 'Resident'} (${u.community || ''})`,
+                href: `/bookings?search=${encodeURIComponent(rawKey || '')}`,
                 type: 'vehicle',
+                actionText: 'Check Schedule',
               });
             }
           }
         });
-      }
-    });
-
-    // 2. Search Bookings for Vehicle Regs & Service Names
-    bookingsSnap.docs.forEach((doc: any) => {
-      const b = doc.data();
-      const reg = (b.vehicleReg || '').toLowerCase();
-      const vName = (b.vehicleName || '').toLowerCase();
-      const uName = (b.userName || '').toLowerCase();
-
-      if (reg.includes(q) || vName.includes(q) || uName.includes(q)) {
-        const key = b.vehicleReg;
-        if (key && !vehiclesSet.has(key) && vehicles.length < 6) {
-          vehiclesSet.add(key);
-          vehicles.push({
-            id: doc.id,
-            title: key.toUpperCase(),
-            subtitle: `${b.vehicleName || 'Vehicle'} • ${b.serviceName || 'Wash Plan'} • ${b.userName || 'Resident'}`,
-            href: `/bookings?search=${encodeURIComponent(key)}`,
-            type: 'vehicle',
-          });
-        }
       }
     });
 

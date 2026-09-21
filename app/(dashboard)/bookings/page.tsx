@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Search,
   Filter,
@@ -67,7 +68,12 @@ interface Booking {
   lastCleanedAt?: number;
 }
 
-export default function BookingsPage() {
+function BookingsContent() {
+  const searchParams = useSearchParams();
+  const urlId = searchParams.get('id');
+  const urlSearch = searchParams.get('search');
+  const [hasAutoOpened, setHasAutoOpened] = useState(false);
+
   const { selectedCommunity, selectedCommunityObj } = useCommunity();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -78,18 +84,24 @@ export default function BookingsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [communityFilter, setCommunityFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useState(urlSearch || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch || '');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
   useEffect(() => {
-    if (selectedCommunity !== 'ALL') {
+    if (urlSearch || urlId) {
+      setCommunityFilter('all');
+      if (urlSearch) {
+        setSearch(urlSearch);
+        setDebouncedSearch(urlSearch);
+      }
+    } else if (selectedCommunity !== 'ALL') {
       setCommunityFilter(selectedCommunityObj?.name || selectedCommunity);
     } else {
       setCommunityFilter('all');
     }
-  }, [selectedCommunity, selectedCommunityObj]);
+  }, [selectedCommunity, selectedCommunityObj, urlSearch, urlId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -152,12 +164,21 @@ export default function BookingsPage() {
     }
   };
 
-  const fetchBookings = async () => {
+  const fetchBookings = async (idParam?: string, searchParam?: string) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/bookings');
+      const params = new URLSearchParams();
+      const effId = idParam !== undefined ? idParam : urlId;
+      const effSearch = searchParam !== undefined ? searchParam : (urlSearch || search);
+      if (effId) params.set('id', effId);
+      if (effSearch && effSearch.trim().length >= 2) params.set('search', effSearch.trim());
+
+      const url = params.toString() ? `/api/bookings?${params.toString()}` : '/api/bookings';
+      const res = await fetch(url);
       const data = await res.json();
-      setBookings(data);
+      if (Array.isArray(data)) {
+        setBookings(data);
+      }
     } catch (error) {
       console.error('Failed to fetch bookings:', error);
     } finally {
@@ -346,12 +367,17 @@ export default function BookingsPage() {
     if (paymentFilter !== 'all' && b.paymentStatus !== paymentFilter) return false;
     if (communityFilter !== 'all' && b.community !== communityFilter) return false;
     if (debouncedSearch) {
-      const s = debouncedSearch.toLowerCase();
+      const s = debouncedSearch.toLowerCase().trim();
+      const normSearch = s.replace(/[\s-]/g, '');
+      const normReg = (b.vehicleReg || '').toLowerCase().replace(/[\s-]/g, '');
+      const matchesReg = (normReg && normSearch && normReg.includes(normSearch)) || (b.vehicleReg || '').toLowerCase().includes(s);
       return (
+        matchesReg ||
         b.userName?.toLowerCase().includes(s) ||
-        b.vehicleReg?.toLowerCase().includes(s) ||
+        b.vehicleName?.toLowerCase().includes(s) ||
         b.serviceName?.toLowerCase().includes(s) ||
-        b.community?.toLowerCase().includes(s)
+        b.community?.toLowerCase().includes(s) ||
+        b.id?.toLowerCase().includes(s)
       );
     }
     return true;
@@ -418,6 +444,29 @@ export default function BookingsPage() {
     setEditPartnerStatus(booking.partnerStatus || 'not_entered');
     setEditPartnerEnteredAt(booking.partnerEnteredAt || 0);
   };
+
+  useEffect(() => {
+    if (bookings.length > 0 && !hasAutoOpened) {
+      if (urlId) {
+        const match = bookings.find((b) => b.id === urlId);
+        if (match) {
+          openDetailsModal(match);
+          setHasAutoOpened(true);
+        }
+      } else if (urlSearch) {
+        const normSearch = urlSearch.replace(/[\s-]/g, '').toLowerCase();
+        const match = bookings.find(
+          (b) =>
+            b.id === urlSearch ||
+            (b.vehicleReg || '').replace(/[\s-]/g, '').toLowerCase() === normSearch
+        );
+        if (match) {
+          openDetailsModal(match);
+          setHasAutoOpened(true);
+        }
+      }
+    }
+  }, [bookings, urlId, urlSearch, hasAutoOpened]);
 
   // Selected User's Vehicles list for Add form dropdown
   const activeUser = users.find((u) => u.id === selectedUserId);
@@ -524,9 +573,69 @@ export default function BookingsPage() {
           </div>
         </div>
       ) : filteredBookings.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-          <AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No bookings found</p>
+        <div className="text-center py-16 bg-white rounded-xl border border-gray-100 p-6 max-w-lg mx-auto shadow-sm">
+          <div className="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100">
+            <Search className="w-6 h-6 text-amber-600" />
+          </div>
+          <h3 className="text-lg font-bold text-gray-900 mb-1">
+            {debouncedSearch ? `No bookings found for "${debouncedSearch}"` : 'No bookings found'}
+          </h3>
+          <p className="text-sm text-gray-500 mb-6">
+            {debouncedSearch
+              ? 'There is no subscription booking matching this vehicle registration or search query.'
+              : 'There are currently no bookings matching your active filters.'}
+          </p>
+
+          {debouncedSearch && (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={() => {
+                  resetCreateForm();
+                  const norm = debouncedSearch.replace(/[\s-]/g, '').toLowerCase();
+                  const matchedUser = users.find((u) =>
+                    u.vehicles?.some(
+                      (v) => (v.registrationNumber || '').replace(/[\s-]/g, '').toLowerCase() === norm
+                    )
+                  );
+                  if (matchedUser) {
+                    setSelectedUserId(matchedUser.id);
+                    const matchedVeh = matchedUser.vehicles?.find(
+                      (v) => (v.registrationNumber || '').replace(/[\s-]/g, '').toLowerCase() === norm
+                    );
+                    if (matchedVeh) {
+                      setSelectedVehicleReg(matchedVeh.registrationNumber);
+                    }
+                  } else {
+                    setSelectedVehicleReg(debouncedSearch.toUpperCase());
+                  }
+                  setShowCreateModal(true);
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm flex items-center justify-center gap-2 shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Create Booking for {debouncedSearch.toUpperCase()}
+              </button>
+              <button
+                onClick={() => {
+                  setSearch('');
+                  setDebouncedSearch('');
+                  setCommunityFilter('all');
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium text-sm"
+              >
+                Clear Search
+              </button>
+            </div>
+          )}
+
+          {communityFilter !== 'all' && (
+            <button
+              onClick={() => setCommunityFilter('all')}
+              className="text-xs text-blue-600 hover:underline mt-4 block mx-auto"
+            >
+              Filtered by community "{communityFilter}". Click to search all communities.
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -1202,5 +1311,33 @@ export default function BookingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function BookingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-4 animate-pulse p-6">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+            <div className="bg-gray-50 h-12 border-b border-gray-200"></div>
+            <div className="divide-y divide-gray-100">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="p-4 flex items-center justify-between space-x-4">
+                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <BookingsContent />
+    </Suspense>
   );
 }
