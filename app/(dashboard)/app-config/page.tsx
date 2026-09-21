@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import {
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { ConfigSkeleton } from '@/components/ui/skeleton';
 
 export default function AppConfigPage() {
   const [config, setConfig] = useState<any>({
@@ -77,11 +78,7 @@ export default function AppConfigPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full" />
-      </div>
-    );
+    return <ConfigSkeleton />;
   }
 
   return (

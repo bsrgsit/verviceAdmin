@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useCommunity } from '@/lib/community-context';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { TableSkeleton } from '@/components/ui/skeleton';
 
 interface Vehicle {
   registrationNumber: string;
@@ -556,22 +557,7 @@ function BookingsContent() {
 
       {/* Table */}
       {loading ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-            <div className="bg-gray-50 h-12 border-b border-gray-200"></div>
-            <div className="divide-y divide-gray-100">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="p-4 flex items-center justify-between space-x-4">
-                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <TableSkeleton rows={6} cols={6} />
       ) : filteredBookings.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100 p-6 max-w-lg mx-auto shadow-sm">
           <div className="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100">
@@ -1316,27 +1302,7 @@ function BookingsContent() {
 
 export default function BookingsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="space-y-4 animate-pulse p-6">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-            <div className="bg-gray-50 h-12 border-b border-gray-200"></div>
-            <div className="divide-y divide-gray-100">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="p-4 flex items-center justify-between space-x-4">
-                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<TableSkeleton rows={6} cols={6} className="p-6" />}>
       <BookingsContent />
     </Suspense>
   );

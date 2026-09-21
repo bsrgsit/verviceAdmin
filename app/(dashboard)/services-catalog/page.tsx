@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { CardGridSkeleton } from '@/components/ui/skeleton';
 
 interface ServiceItem {
   id: string;
@@ -431,10 +432,7 @@ export default function ServicesCatalogPage() {
 
       {/* ── 4. SERVICES GRID ── */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center h-64 space-y-3">
-          <div className="animate-spin w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full" />
-          <p className="text-xs font-semibold text-slate-500">Loading catalog items...</p>
-        </div>
+        <CardGridSkeleton count={6} />
       ) : filteredServices.length === 0 ? (
         <Card className="border-dashed border-2 border-slate-200 p-12 text-center">
           <Sparkles className="w-10 h-10 text-slate-300 mx-auto mb-3" />

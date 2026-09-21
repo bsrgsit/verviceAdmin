@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useCommunity } from '@/lib/community-context';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { TableSkeleton } from '@/components/ui/skeleton';
 
 interface Vehicle {
   registrationNumber: string;
@@ -416,22 +417,7 @@ function UsersContent() {
 
       {/* Table */}
       {loading ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-            <div className="bg-gray-50 h-12 border-b border-gray-200"></div>
-            <div className="divide-y divide-gray-100">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="p-4 flex items-center justify-between space-x-4">
-                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <TableSkeleton rows={6} cols={6} />
       ) : filteredUsers.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
           <UsersIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -1208,27 +1194,7 @@ function UsersContent() {
 
 export default function UsersPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="space-y-4 animate-pulse p-6">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-            <div className="bg-gray-50 h-12 border-b border-gray-200"></div>
-            <div className="divide-y divide-gray-100">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="p-4 flex items-center justify-between space-x-4">
-                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/6"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/12"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<TableSkeleton rows={6} cols={6} className="p-6" />}>
       <UsersContent />
     </Suspense>
   );

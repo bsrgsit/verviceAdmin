@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useCommunity } from '@/lib/community-context';
 import { formatDateTime } from '@/lib/utils';
+import { TableSkeleton } from '@/components/ui/skeleton';
 
 interface SupportTicket {
   id: string;
@@ -228,9 +229,7 @@ export default function SupportTicketsPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="flex justify-center py-12 bg-white rounded-xl border border-gray-100">
-          <Loader2 className="w-8 h-8 animate-spin text-green-600" />
-        </div>
+        <TableSkeleton rows={6} cols={6} />
       ) : filteredTickets.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
           <AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-4" />

@@ -22,6 +22,7 @@ import { formatCurrency, formatDateTime } from '@/lib/utils';
 import PageHeader from '@/components/ui/page-header';
 import DataTable from '@/components/ui/data-table';
 import StatusBadge from '@/components/ui/status-badge';
+import { TableSkeleton } from '@/components/ui/skeleton';
 
 interface Invoice {
   id: string;
@@ -496,16 +497,7 @@ export default function InvoicesPage() {
 
       {/* Invoices List */}
       {loading ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="border border-slate-100 rounded-xl overflow-hidden bg-white p-6">
-            <div className="h-6 bg-slate-200 rounded w-1/4 mb-4"></div>
-            <div className="space-y-3">
-              <div className="h-10 bg-slate-100 rounded"></div>
-              <div className="h-10 bg-slate-100 rounded"></div>
-              <div className="h-10 bg-slate-100 rounded"></div>
-            </div>
-          </div>
-        </div>
+        <TableSkeleton rows={6} cols={5} />
       ) : filteredInvoices.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-slate-100 shadow-premium">
           <Receipt className="w-12 h-12 text-slate-300 mx-auto mb-4" />

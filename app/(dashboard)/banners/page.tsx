@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import {
@@ -18,6 +18,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { CardGridSkeleton } from '@/components/ui/skeleton';
 
 export default function BannersPage() {
   const { communities } = useCommunity();
@@ -183,9 +184,7 @@ export default function BannersPage() {
         {/* Left 7 Cols: Banners Cards */}
         <div className="lg:col-span-7 space-y-4">
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full" />
-            </div>
+            <CardGridSkeleton count={4} columns="grid grid-cols-1 sm:grid-cols-2 gap-4" />
           ) : banners.length === 0 ? (
             <Card className="p-10 text-center space-y-3">
               <ImageIcon className="w-12 h-12 text-slate-300 mx-auto" />

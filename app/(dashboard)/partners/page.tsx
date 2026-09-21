@@ -15,6 +15,7 @@ import {
   Phone,
   X,
 } from 'lucide-react';
+import { TableSkeleton } from '@/components/ui/skeleton';
 
 interface Partner {
   id: string;
@@ -260,9 +261,7 @@ export default function PartnersPage() {
 
       {/* Partners List */}
       {loading ? (
-        <div className="flex justify-center items-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-green-600" />
-        </div>
+        <TableSkeleton rows={6} cols={7} />
       ) : filteredPartners.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100 shadow-sm">
           <AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-4" />

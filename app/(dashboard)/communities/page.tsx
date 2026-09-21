@@ -17,6 +17,7 @@ import {
   MapPin,
   Shield,
 } from 'lucide-react';
+import { CardGridSkeleton } from '@/components/ui/skeleton';
 
 interface Community {
   id: string;
@@ -200,9 +201,7 @@ export default function CommunitiesPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-green-500" />
-        </div>
+        <CardGridSkeleton count={6} />
       ) : filteredCommunities.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
           <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />

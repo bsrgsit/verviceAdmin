@@ -13,6 +13,7 @@ import {
   Info,
 } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
+import { ListSkeleton } from '@/components/ui/skeleton';
 
 interface AuditEntry {
   id: string;
@@ -155,26 +156,7 @@ export default function AuditLogPage() {
       </div>
 
       {loading ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-            <div className="divide-y divide-gray-100">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="p-4 flex items-start gap-4">
-                  <div className="w-8 h-8 bg-gray-200 rounded-lg flex-shrink-0"></div>
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                      <div className="h-4 bg-gray-200 rounded w-1/6"></div>
-                      <div className="h-4 bg-gray-200 rounded w-1/12"></div>
-                    </div>
-                    <div className="h-3 bg-gray-200 rounded w-1/2 mt-1"></div>
-                  </div>
-                  <div className="h-3 bg-gray-200 rounded w-16 flex-shrink-0"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <ListSkeleton rows={6} />
       ) : filteredEntries.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
           <History className="w-12 h-12 text-gray-300 mx-auto mb-4" />

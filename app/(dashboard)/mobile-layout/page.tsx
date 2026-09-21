@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ListSkeleton, CardGridSkeleton } from '@/components/ui/skeleton';
 
 interface QuickActionItem {
   id: string;
@@ -418,9 +419,7 @@ export default function MobileLayoutPage() {
               </div>
 
               {loading ? (
-                <div className="py-16 text-center text-xs text-slate-400 font-semibold">
-                  Loading quick actions...
-                </div>
+                <ListSkeleton rows={5} />
               ) : quickActions.length === 0 ? (
                 <div className="py-12 text-center text-xs text-slate-400">
                   No quick actions found. Click 'Restore 8 Standard Defaults' above.
@@ -605,9 +604,7 @@ export default function MobileLayoutPage() {
           </div>
 
           {loading ? (
-            <div className="py-16 text-center text-xs text-slate-400 font-semibold">
-              Loading promo tiles...
-            </div>
+            <CardGridSkeleton count={4} columns="grid grid-cols-1 md:grid-cols-2 gap-4" />
           ) : homeTiles.length === 0 ? (
             <Card className="border-dashed border-2 border-slate-200 p-12 text-center">
               <Layers className="w-10 h-10 text-slate-300 mx-auto mb-3" />

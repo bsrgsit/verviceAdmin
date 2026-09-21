@@ -1,6 +1,6 @@
-﻿'use client';
+'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Layout,
   Save,
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { ConfigSkeleton } from '@/components/ui/skeleton';
 
 export default function ScreenConfigPage() {
   const [config, setConfig] = useState<any>({
@@ -24,8 +25,21 @@ export default function ScreenConfigPage() {
     showAddVehicleGate: true,
   });
 
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/app-config')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.config?.screen_config) {
+          setConfig((prev: any) => ({ ...prev, ...data.config.screen_config }));
+        }
+      })
+      .catch((e) => console.error(e))
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -43,6 +57,10 @@ export default function ScreenConfigPage() {
       setSaving(false);
     }
   };
+
+  if (loading) {
+    return <ConfigSkeleton />;
+  }
 
   return (
     <div className="space-y-6 max-w-5xl">
