@@ -144,7 +144,23 @@ export async function GET(
       monthlyRevenue,
     };
 
+    const community = {
+      id: params.id,
+      name: communityName,
+      city: communityData.city || '',
+      address: communityData.address || '',
+      pincode: communityData.pincode || '',
+      totalUnits: Number(communityData.totalUnits) || 0,
+      blocks: Array.isArray(communityData.blocks) ? communityData.blocks : [],
+      parkingFloors: Array.isArray(communityData.parkingFloors) ? communityData.parkingFloors : [],
+      requiresGatePass: Boolean(communityData.requiresGatePass),
+      gatePasscode: communityData.gatePasscode || '',
+      isActive: communityData.isActive !== false,
+      features: communityData.features || {},
+    };
+
     return NextResponse.json({
+      community,
       stats,
       users,
       bookings,
@@ -171,17 +187,37 @@ export async function PUT(
     }
 
     const data = await request.json();
-    await getDb().collection('communities').doc(params.id).update(data);
+    const cleanUpdates: any = {
+      updatedAt: Date.now(),
+    };
+
+    if (data.name !== undefined) cleanUpdates.name = String(data.name).trim();
+    if (data.city !== undefined) cleanUpdates.city = String(data.city).trim();
+    if (data.address !== undefined) cleanUpdates.address = String(data.address).trim();
+    if (data.pincode !== undefined) cleanUpdates.pincode = String(data.pincode).trim();
+    if (data.totalUnits !== undefined) cleanUpdates.totalUnits = Number(data.totalUnits) || 0;
+    if (data.requiresGatePass !== undefined) cleanUpdates.requiresGatePass = Boolean(data.requiresGatePass);
+    if (data.gatePasscode !== undefined) cleanUpdates.gatePasscode = String(data.gatePasscode).trim();
+    if (data.isActive !== undefined) cleanUpdates.isActive = Boolean(data.isActive);
+    if (Array.isArray(data.blocks)) {
+      cleanUpdates.blocks = Array.from(new Set(data.blocks.map((b: any) => String(b).trim()).filter(Boolean)));
+    }
+    if (Array.isArray(data.parkingFloors)) {
+      cleanUpdates.parkingFloors = Array.from(new Set(data.parkingFloors.map((f: any) => String(f).trim()).filter(Boolean)));
+    }
+    if (data.features !== undefined) cleanUpdates.features = data.features;
+
+    await getDb().collection('communities').doc(params.id).update(cleanUpdates);
     
     await writeAuditLog(
       admin.email,
       'community_updated',
       params.id,
       'community',
-      `Updated community details: ${JSON.stringify(Object.keys(data))}`
+      `Updated community details: ${Object.keys(cleanUpdates).filter(k => k !== 'updatedAt').join(', ')}`
     );
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, updated: cleanUpdates });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

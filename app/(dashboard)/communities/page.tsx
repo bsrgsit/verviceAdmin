@@ -12,6 +12,10 @@ import {
   Users,
   ArrowRight,
   Trash2,
+  Layers,
+  Key,
+  MapPin,
+  Shield,
 } from 'lucide-react';
 
 interface Community {
@@ -19,12 +23,15 @@ interface Community {
   name: string;
   city: string;
   address: string;
+  pincode?: string;
   blocks: string[];
   totalUnits: number;
   neighborCount: number;
-  features: Record<string, boolean>;
-  isActive: boolean;
+  features?: Record<string, boolean>;
+  isActive?: boolean;
   requiresGatePass: boolean;
+  gatePasscode?: string;
+  parkingFloors?: string[];
 }
 
 export default function CommunitiesPage() {
@@ -38,9 +45,13 @@ export default function CommunitiesPage() {
     name: '',
     city: '',
     address: '',
+    pincode: '',
     blocks: '',
     totalUnits: 0,
     requiresGatePass: false,
+    gatePasscode: '',
+    parkingFloors: '',
+    isActive: true,
   });
 
   useEffect(() => {
@@ -72,14 +83,33 @@ export default function CommunitiesPage() {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
+          name: formData.name,
+          city: formData.city,
+          address: formData.address,
+          pincode: formData.pincode,
+          totalUnits: Number(formData.totalUnits) || 0,
+          requiresGatePass: formData.requiresGatePass,
+          gatePasscode: formData.gatePasscode,
+          isActive: formData.isActive,
           blocks: formData.blocks.split(',').map((b) => b.trim()).filter(Boolean),
+          parkingFloors: formData.parkingFloors.split(',').map((f) => f.trim()).filter(Boolean),
         }),
       });
 
       setShowForm(false);
       setEditingCommunity(null);
-      setFormData({ name: '', city: '', address: '', blocks: '', totalUnits: 0, requiresGatePass: false });
+      setFormData({
+        name: '',
+        city: '',
+        address: '',
+        pincode: '',
+        blocks: '',
+        totalUnits: 0,
+        requiresGatePass: false,
+        gatePasscode: '',
+        parkingFloors: '',
+        isActive: true,
+      });
       await fetchCommunities();
     } catch (error) {
       console.error('Failed to save community:', error);
@@ -89,12 +119,16 @@ export default function CommunitiesPage() {
   const handleEdit = (community: Community) => {
     setEditingCommunity(community);
     setFormData({
-      name: community.name,
-      city: community.city,
-      address: community.address,
-      blocks: community.blocks.join(', '),
-      totalUnits: community.totalUnits,
-      requiresGatePass: community.requiresGatePass,
+      name: community.name || '',
+      city: community.city || '',
+      address: community.address || '',
+      pincode: community.pincode || '',
+      blocks: (community.blocks || []).join(', '),
+      totalUnits: community.totalUnits || 0,
+      requiresGatePass: Boolean(community.requiresGatePass),
+      gatePasscode: community.gatePasscode || '',
+      parkingFloors: (community.parkingFloors || []).join(', '),
+      isActive: community.isActive !== false,
     });
     setShowForm(true);
   };
@@ -133,10 +167,21 @@ export default function CommunitiesPage() {
         <button
           onClick={() => {
             setEditingCommunity(null);
-            setFormData({ name: '', city: '', address: '', blocks: '', totalUnits: 0, requiresGatePass: false });
+            setFormData({
+              name: '',
+              city: '',
+              address: '',
+              pincode: '',
+              blocks: '',
+              totalUnits: 0,
+              requiresGatePass: false,
+              gatePasscode: '',
+              parkingFloors: '',
+              isActive: true,
+            });
             setShowForm(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
         >
           <Plus className="w-4 h-4" />
           Add Community
@@ -168,67 +213,100 @@ export default function CommunitiesPage() {
           {filteredCommunities.map((community) => (
             <div
               key={community.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition cursor-pointer"
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition cursor-pointer flex flex-col justify-between"
               onClick={() => router.push(`/communities/${community.id}`)}
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-green-600" />
+              <div>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
+                      <Building2 className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{community.name}</h3>
+                      <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3 h-3 text-gray-400" />
+                        {community.city}{community.pincode ? ` - ${community.pincode}` : ''}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{community.name}</h3>
-                    <p className="text-sm text-gray-500">{community.city}</p>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/communities/${community.id}?tab=blocks_flats`);
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
+                      title="Manage Blocks & Flats"
+                    >
+                      <Layers className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleEdit(community); }}
+                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition"
+                      title="Edit"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(community.id, community.name); }}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-lg transition"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleEdit(community); }}
-                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition"
-                    title="Edit"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(community.id, community.name); }}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-lg transition"
-                    title="Delete"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Blocks</span>
-                  <span className="font-medium text-gray-900">{community.blocks?.length || 0}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Total Units</span>
-                  <span className="font-medium text-gray-900">{community.totalUnits || 'N/A'}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Users</span>
-                  <span className="font-medium text-gray-900">{community.neighborCount || 0}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Gate Pass</span>
-                  <span className={`px-2 py-0.5 text-xs rounded-full ${community.requiresGatePass ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                    {community.requiresGatePass ? 'Required' : 'Not Required'}
-                  </span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Blocks</span>
+                    <span className="font-medium text-gray-900">{community.blocks?.length || 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Total Units</span>
+                    <span className="font-medium text-gray-900">{community.totalUnits || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Users</span>
+                    <span className="font-medium text-gray-900">{community.neighborCount || 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Gate Pass</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${community.requiresGatePass ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {community.requiresGatePass ? 'Required' : 'Not Required'}
+                      </span>
+                      {community.requiresGatePass && community.gatePasscode && (
+                        <span className="font-mono text-xs bg-purple-50 text-purple-800 border border-purple-200 px-1.5 py-0.5 rounded">
+                          {community.gatePasscode}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {community.blocks && community.blocks.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <p className="text-xs text-gray-500 mb-2">Blocks</p>
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs text-gray-500">Blocks</p>
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/communities/${community.id}?tab=blocks_flats`);
+                      }}
+                      className="text-[11px] text-green-600 hover:text-green-700 font-medium"
+                    >
+                      Edit Flats →
+                    </span>
+                  </div>
                   <div className="flex flex-wrap gap-1">
                     {community.blocks.map((block) => (
                       <span
                         key={block}
-                        className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-md"
+                        className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-md"
                       >
                         {block}
                       </span>
@@ -244,15 +322,15 @@ export default function CommunitiesPage() {
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-6 border-b border-gray-100">
               <h3 className="text-lg font-bold text-gray-900">
                 {editingCommunity ? 'Edit Community' : 'Add Community'}
               </h3>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Society Name</label>
                 <input
                   type="text"
                   value={formData.name}
@@ -261,27 +339,43 @@ export default function CommunitiesPage() {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                  required
-                />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">City</label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">PIN Code</label>
+                  <input
+                    type="text"
+                    value={formData.pincode}
+                    onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                    placeholder="e.g. 560103"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Address</label>
                 <input
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Street or landmark"
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                 />
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Blocks (comma-separated)</label>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Blocks (comma-separated)</label>
                 <input
                   type="text"
                   value={formData.blocks}
@@ -290,8 +384,9 @@ export default function CommunitiesPage() {
                   placeholder="Block A, Block B, Block C"
                 />
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Total Units</label>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Total Units</label>
                 <input
                   type="number"
                   value={formData.totalUnits}
@@ -299,32 +394,65 @@ export default function CommunitiesPage() {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                 />
               </div>
-              <div className="flex items-center gap-2">
+
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="gatePass"
+                    checked={formData.requiresGatePass}
+                    onChange={(e) => setFormData({ ...formData, requiresGatePass: e.target.checked })}
+                    className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  />
+                  <label htmlFor="gatePass" className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-purple-600" />
+                    Requires Gate Pass
+                  </label>
+                </div>
+
+                {formData.requiresGatePass && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-1 flex items-center gap-1">
+                      <Key className="w-3 h-3 text-purple-600" /> Cleaner Gate Passcode
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.gatePasscode}
+                      onChange={(e) => setFormData({ ...formData, gatePasscode: e.target.value })}
+                      placeholder="e.g. 9921# or 4402"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Parking Floors (comma-separated)</label>
                 <input
-                  type="checkbox"
-                  id="gatePass"
-                  checked={formData.requiresGatePass}
-                  onChange={(e) => setFormData({ ...formData, requiresGatePass: e.target.checked })}
-                  className="rounded border-gray-300"
+                  type="text"
+                  value={formData.parkingFloors}
+                  onChange={(e) => setFormData({ ...formData, parkingFloors: e.target.value })}
+                  placeholder="e.g. B1, B2, Ground Floor"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                 />
-                <label htmlFor="gatePass" className="text-sm text-gray-700">Requires Gate Pass</label>
+              </div>
+
+              <div className="p-6 border-t border-gray-100 flex justify-end gap-3 -mx-6 -mb-6 bg-white">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition shadow-sm"
+                >
+                  {editingCommunity ? 'Save Changes' : 'Add Community'}
+                </button>
               </div>
             </form>
-            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-              >
-                {editingCommunity ? 'Save Changes' : 'Add Community'}
-              </button>
-            </div>
           </div>
         </div>
       )}

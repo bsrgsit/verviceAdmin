@@ -6,7 +6,6 @@ import ActionInbox from '@/components/dashboard/action-inbox';
 import {
   Users,
   FileText,
-  CreditCard,
   AlertTriangle,
   TrendingUp,
   Clock,
@@ -16,11 +15,10 @@ import {
   BatteryCharging,
   Car,
   UserCheck,
-  Globe,
   MapPin,
-  Check,
   CalendarCheck,
   Zap,
+  Layers,
 } from 'lucide-react';
 import { useCommunity } from '@/lib/community-context';
 import { formatCurrency, timeAgo } from '@/lib/utils';
@@ -54,6 +52,7 @@ export default function DashboardPage() {
   const { selectedCommunity, setSelectedCommunity, selectedCommunityObj } = useCommunity();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<AuditEntry[]>([]);
+  const [recentVerifiedPayments, setRecentVerifiedPayments] = useState<any[]>([]);
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
   const [communities, setCommunities] = useState<any[]>([]);
   const [partners, setPartners] = useState<any[]>([]);
@@ -90,9 +89,10 @@ export default function DashboardPage() {
       fetch('/api/communities').then((r) => r.json()),
       fetch('/api/partners').then((r) => r.json()),
       fetch('/api/bookings').then((r) => r.json()),
+      fetch('/api/payments').then((r) => r.json()).catch(() => []),
       fetch(actionInboxUrl).then((r) => r.json()).catch(() => null),
     ])
-      .then(([statsData, activityData, pendingData, communitiesData, partnersData, bookingsData, actionInboxData]) => {
+      .then(([statsData, activityData, pendingData, communitiesData, partnersData, bookingsData, paymentsData, actionInboxData]) => {
         setStats(statsData?.error ? null : statsData);
         setRecentActivity(Array.isArray(activityData) ? activityData : []);
 
@@ -100,6 +100,9 @@ export default function DashboardPage() {
         const rawCommunities = Array.isArray(communitiesData) ? communitiesData : [];
         const rawPartners = Array.isArray(partnersData) ? partnersData : [];
         const rawBookings = Array.isArray(bookingsData) ? bookingsData : [];
+        const rawPayments = Array.isArray(paymentsData) ? paymentsData : [];
+
+        const verifiedPayments = rawPayments.filter((p: any) => p.adminVerified === true || p.status === 'paid');
 
         if (actionInboxData && typeof actionInboxData.totalUrgent === 'number') {
           setActionData(actionInboxData);
@@ -114,6 +117,14 @@ export default function DashboardPage() {
                 p.userCommunity === commName ||
                 p.communityId === selectedCommunity
             )
+          );
+          setRecentVerifiedPayments(
+            verifiedPayments.filter(
+              (p: any) =>
+                p.community === commName ||
+                p.userCommunity === commName ||
+                p.communityId === selectedCommunity
+            ).slice(0, 10)
           );
           setCommunities(
             rawCommunities.filter(
@@ -137,6 +148,7 @@ export default function DashboardPage() {
           );
         } else {
           setPendingPayments(rawPending);
+          setRecentVerifiedPayments(verifiedPayments.slice(0, 10));
           setCommunities(rawCommunities);
           setPartners(rawPartners);
           setBookings(rawBookings);
@@ -198,18 +210,25 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Link href={`/communities/${activeCommunityData.id}?tab=blocks_flats`}>
+                <Button variant="default" size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
+                  <Layers className="w-3.5 h-3.5" />
+                  Edit Blocks & Flats
+                </Button>
+              </Link>
               <Link href={`/communities/${activeCommunityData.id}`}>
                 <Button variant="outline" size="sm">
-                  Society Settings
+                  Society Details
                 </Button>
               </Link>
               <Button
-                variant="default"
+                variant="ghost"
                 size="sm"
                 onClick={() => setSelectedCommunity('ALL')}
+                className="text-xs text-slate-600"
               >
-                Switch to All Communities View
+                All Communities View
               </Button>
             </div>
           </CardContent>
@@ -340,27 +359,38 @@ export default function DashboardPage() {
           </Card>
         </Link>
 
-        {/* Card 4: Pending Approvals */}
-        <Link href="/payments" className="group">
-          <Card className="hover:border-amber-500/50 hover:shadow-md transition-all h-full">
-            <CardHeader className="p-5 pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Pending Approvals
-              </CardTitle>
-              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Clock className="w-4 h-4" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-5 pt-0">
-              <p className="text-2xl font-black text-amber-600 tracking-tight">
-                {stats?.pendingPayments || pendingPayments.length}
-              </p>
-              <p className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" /> Action required
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
+        {/* Card 4: Pending Approvals (Total combined approvals) */}
+        {(() => {
+          const totalPending =
+            (pendingPayments?.length || 0) +
+            (actionData.cancellationRequests?.length || 0) +
+            (actionData.pendingDrivers?.length || 0) +
+            (actionData.pendingBatteries?.length || 0);
+
+          return (
+            <Link href="/payments" className="group">
+              <Card className="hover:border-amber-500/50 hover:shadow-md transition-all h-full">
+                <CardHeader className="p-5 pb-2 flex flex-row items-center justify-between space-y-0">
+                  <CardTitle className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Pending Approvals
+                  </CardTitle>
+                  <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-5 pt-0">
+                  <p className="text-2xl font-black text-amber-600 tracking-tight">
+                    {totalPending}
+                  </p>
+                  <p className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    {totalPending > 0 ? `${totalPending} action items pending` : 'All approvals cleared'}
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })()}
       </div>
 
       {/* ── 3. COMMUNITY MATRIX (ALL COMMUNITIES MODE) ── */}
@@ -372,7 +402,7 @@ export default function DashboardPage() {
                 Society & Hub Matrix
               </h2>
               <p className="text-xs text-slate-500">
-                Click any society card to focus the entire portal on that hub
+                Click any society card to focus the portal, or manage flats and settings directly
               </p>
             </div>
             <Link href="/communities">
@@ -406,7 +436,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <span className="text-[9px] text-slate-400 uppercase font-bold block">Blocks / Towers</span>
-                      <span className="font-black text-slate-900 text-sm">{comm.blocks?.length || 4}</span>
+                      <span className="font-black text-slate-900 text-sm">{comm.blocks?.length || 0}</span>
                     </div>
                   </div>
 
@@ -415,12 +445,18 @@ export default function DashboardPage() {
                       variant="default"
                       size="sm"
                       onClick={() => setSelectedCommunity(comm.id)}
-                      className="flex-1"
+                      className="flex-1 text-xs"
                     >
-                      View Hub Dashboard
+                      Hub View
                     </Button>
+                    <Link href={`/communities/${comm.id}?tab=blocks_flats`}>
+                      <Button variant="outline" size="sm" className="gap-1 text-xs text-emerald-700 hover:text-emerald-800" title="Edit Blocks & Flats">
+                        <Layers className="w-3.5 h-3.5" />
+                        Flats
+                      </Button>
+                    </Link>
                     <Link href={`/communities/${comm.id}`}>
-                      <Button variant="outline" size="sm" className="px-2.5">
+                      <Button variant="outline" size="sm" className="px-2.5" title="Edit Community Details">
                         <ArrowRight className="w-3.5 h-3.5" />
                       </Button>
                     </Link>
@@ -435,19 +471,9 @@ export default function DashboardPage() {
       {/* ── 4. CENTRAL OPERATIONS TABS (SHADCN TABS) ── */}
       <Card>
         <CardHeader className="p-4 border-b border-slate-100 bg-slate-50/50">
-          <Tabs defaultValue="payments" className="w-full">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <Tabs defaultValue="cleaners" className="w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
               <TabsList className="bg-slate-200/60 p-1">
-                <TabsTrigger value="payments" className="gap-1.5">
-                  <CreditCard className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Pending Approvals</span>
-                  {pendingPayments.length > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[10px]">
-                      {pendingPayments.length}
-                    </span>
-                  )}
-                </TabsTrigger>
-
                 <TabsTrigger value="cleaners" className="gap-1.5">
                   <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Cleaner Staff</span>
@@ -456,9 +482,24 @@ export default function DashboardPage() {
                   </span>
                 </TabsTrigger>
 
+                <TabsTrigger value="verified" className="gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Verified Activity</span>
+                  {recentVerifiedPayments.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px]">
+                      {recentVerifiedPayments.length}
+                    </span>
+                  )}
+                </TabsTrigger>
+
                 <TabsTrigger value="emergency" className="gap-1.5">
                   <BatteryCharging className="w-3.5 h-3.5 text-blue-500" />
                   <span>Emergency Services</span>
+                  {((stats?.pendingBatteryRequests || 0) + (stats?.pendingDriverRequests || 0)) > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">
+                      {(stats?.pendingBatteryRequests || 0) + (stats?.pendingDriverRequests || 0)}
+                    </span>
+                  )}
                 </TabsTrigger>
 
                 <TabsTrigger value="audit" className="gap-1.5">
@@ -467,56 +508,14 @@ export default function DashboardPage() {
                 </TabsTrigger>
               </TabsList>
 
-              <Link href="/payments">
+              <Link href="/cleaners">
                 <Button variant="link" size="sm" className="text-emerald-700 font-bold p-0 text-xs">
-                  View Full Module →
+                  Manage Staff →
                 </Button>
               </Link>
             </div>
 
-            {/* TAB 1: PENDING APPROVALS */}
-            <TabsContent value="payments" className="pt-3">
-              {pendingPayments.length === 0 ? (
-                <div className="py-8 text-center space-y-2">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-                  <h4 className="text-sm font-bold text-slate-900">All Payments Verified!</h4>
-                  <p className="text-xs text-slate-400">No pending manual UPI transactions awaiting approval.</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100">
-                  {pendingPayments.slice(0, 5).map((payment) => (
-                    <div
-                      key={payment.id}
-                      className="py-3 flex items-center justify-between gap-4 hover:bg-slate-50/70 px-2 rounded-xl transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs">
-                          UPI
-                        </div>
-                        <div>
-                          <p className="text-xs font-extrabold text-slate-900">{payment.userName || 'Resident'}</p>
-                          <p className="text-[10px] text-slate-400">
-                            {payment.community || payment.userCommunity || 'Community'} • Ref: {payment.utrNumber || payment.id}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-xs font-black text-slate-900">{formatCurrency(payment.amount)}</p>
-                          <p className="text-[10px] text-slate-400">{timeAgo(payment.createdAt)}</p>
-                        </div>
-                        <Link href="/payments">
-                          <Button size="sm" variant="default">Review</Button>
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
-            {/* TAB 2: CLEANER STAFF */}
+            {/* TAB 1: CLEANER STAFF */}
             <TabsContent value="cleaners" className="pt-3">
               {partners.length === 0 ? (
                 <div className="py-8 text-center space-y-2">
@@ -542,6 +541,68 @@ export default function DashboardPage() {
                       <Badge variant="success">{partner.status || 'Active'}</Badge>
                     </div>
                   ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* TAB 2: VERIFIED ACTIVITY */}
+            <TabsContent value="verified" className="pt-3">
+              {recentVerifiedPayments.length === 0 ? (
+                <div className="py-8 text-center space-y-2">
+                  <CheckCircle2 className="w-10 h-10 text-slate-300 mx-auto" />
+                  <p className="text-xs font-bold text-slate-600">No verified payments found for this scope.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-white">
+                    {recentVerifiedPayments.slice(0, 6).map((payment: any) => (
+                      <div
+                        key={`verified-${payment.id}`}
+                        className="p-3.5 hover:bg-slate-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-slate-900">{payment.userName || 'Resident'}</span>
+                              <Badge variant="outline" className="text-[10px] py-0 px-1.5 bg-emerald-50 text-emerald-800 border-emerald-200">
+                                Verified
+                              </Badge>
+                              <span className="text-slate-400 text-[11px]">{timeAgo(payment.createdAt || payment.verifiedAt)}</span>
+                            </div>
+                            <p className="text-slate-500 text-[11px] mt-0.5">
+                              {payment.community || payment.userCommunity || 'Community'}
+                              {payment.serviceName ? ` • ${payment.serviceName}` : ''}
+                              {(payment.upiTransactionId || payment.utrNumber) ? (
+                                <> • Ref: <span className="font-mono font-semibold text-slate-700">{payment.upiTransactionId || payment.utrNumber}</span></>
+                              ) : null}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 self-end sm:self-center">
+                          <div className="text-right">
+                            <p className="text-xs font-black text-emerald-700">{formatCurrency(payment.amount)}</p>
+                            <p className="text-[10px] text-slate-400 font-medium">Settled</p>
+                          </div>
+                          <Link href={`/payments?id=${payment.id}`}>
+                            <Button size="sm" variant="ghost" className="h-8 px-2 text-slate-500 hover:text-slate-800">
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <Link href="/payments">
+                      <Button variant="link" size="sm" className="text-emerald-700 font-bold p-0 text-xs">
+                        View All Payments →
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               )}
             </TabsContent>
