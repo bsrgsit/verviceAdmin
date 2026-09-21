@@ -1,0 +1,4 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" = \"main\" ]; then exit 1; elif git log -1 --pretty=%B | grep -qiE '\\[(skip ci|skip vercel)\\]'; then exit 0; else exit 1; fi"
+}
