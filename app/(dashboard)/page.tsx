@@ -26,6 +26,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { DashboardSkeleton } from '@/components/ui/skeleton';
 
 interface DashboardStats {
   totalUsers: number;
@@ -163,12 +164,7 @@ export default function DashboardPage() {
   }, [selectedCommunity, selectedCommunityObj]);
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-80 space-y-3">
-        <div className="animate-spin w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full" />
-        <p className="text-xs font-semibold text-slate-500">Loading operations dashboard...</p>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   const isAllView = selectedCommunity === 'ALL';

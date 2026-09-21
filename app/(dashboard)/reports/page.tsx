@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import {
@@ -20,6 +20,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
+import { ReportsSkeleton } from '@/components/ui/skeleton';
 
 export default function ReportsPage() {
   const { selectedCommunity, selectedCommunityObj } = useCommunity();
@@ -57,12 +58,7 @@ export default function ReportsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-80 space-y-3">
-        <div className="animate-spin w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full" />
-        <p className="text-xs font-semibold text-slate-500">Aggregating live financial and car analytics from Firestore...</p>
-      </div>
-    );
+    return <ReportsSkeleton />;
   }
 
   const isAll = selectedCommunity === 'ALL';

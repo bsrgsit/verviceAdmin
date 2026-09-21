@@ -18,6 +18,7 @@ import { formatCurrency, formatDateTime, timeAgo } from '@/lib/utils';
 import PageHeader from '@/components/ui/page-header';
 import DataTable from '@/components/ui/data-table';
 import StatusBadge from '@/components/ui/status-badge';
+import { TableSkeleton } from '@/components/ui/skeleton';
 
 interface User {
   id: string;
@@ -427,22 +428,7 @@ export default function PaymentsPage() {
 
       {/* Table & Filtering */}
       {loading ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="border border-slate-100 rounded-xl overflow-hidden bg-white">
-            <div className="bg-slate-50 h-12 border-b border-slate-100"></div>
-            <div className="divide-y divide-slate-100">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="p-4 flex items-center justify-between space-x-4">
-                  <div className="h-4 bg-slate-200 rounded w-1/4"></div>
-                  <div className="h-4 bg-slate-200 rounded w-1/6"></div>
-                  <div className="h-4 bg-slate-200 rounded w-1/12"></div>
-                  <div className="h-4 bg-slate-200 rounded w-1/6"></div>
-                  <div className="h-4 bg-slate-200 rounded w-1/12"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <TableSkeleton rows={6} cols={6} />
       ) : (
         <DataTable
           searchPlaceholder="Search by user name, phone, or transaction ID..."

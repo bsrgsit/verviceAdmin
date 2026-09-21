@@ -40,6 +40,7 @@ import {
 import { formatCurrency, formatDateTime, timeAgo } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { CommunityDetailSkeleton, TableSkeleton, ListSkeleton } from '@/components/ui/skeleton';
 
 interface CommunityStats {
   communityName: string;
@@ -593,11 +594,7 @@ export default function CommunityDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-green-500" />
-      </div>
-    );
+    return <CommunityDetailSkeleton />;
   }
 
   return (
@@ -890,9 +887,7 @@ export default function CommunityDetailPage() {
 
                 {/* Block items list */}
                 {flatsLoading ? (
-                  <div className="py-8 flex justify-center items-center">
-                    <Loader2 className="w-6 h-6 animate-spin text-green-600" />
-                  </div>
+                  <ListSkeleton rows={4} />
                 ) : Object.keys(allBlocksFlats).length === 0 ? (
                   <div className="text-center py-8 text-gray-400 text-sm">
                     No blocks added yet. Create your first block above.
@@ -1215,9 +1210,7 @@ export default function CommunityDetailPage() {
           </div>
 
           {tabLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="w-6 h-6 animate-spin text-green-500" />
-            </div>
+            <TableSkeleton rows={4} cols={5} />
           ) : filteredUsers.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
               <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -1291,9 +1284,7 @@ export default function CommunityDetailPage() {
           </div>
 
           {tabLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="w-6 h-6 animate-spin text-green-500" />
-            </div>
+            <TableSkeleton rows={4} cols={5} />
           ) : filteredBookings.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
               <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -1380,9 +1371,7 @@ export default function CommunityDetailPage() {
           )}
 
           {tabLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="w-6 h-6 animate-spin text-green-500" />
-            </div>
+            <TableSkeleton rows={4} cols={5} />
           ) : filteredPayments.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
               <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -1504,9 +1493,7 @@ export default function CommunityDetailPage() {
           </div>
 
           {tabLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="w-6 h-6 animate-spin text-green-500" />
-            </div>
+            <TableSkeleton rows={4} cols={5} />
           ) : filteredInvoices.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
               <Receipt className="w-12 h-12 text-gray-300 mx-auto mb-4" />
