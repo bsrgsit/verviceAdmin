@@ -4,22 +4,68 @@ import { writeAuditLog, getAuthenticatedAdmin, enforceSuperAdmin, canAccessUser 
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const admin = await getAuthenticatedAdmin();
     if (!admin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const targetId = searchParams.get('id');
+    const targetSearch = searchParams.get('search');
+
     const db = getDb();
-    // Enforce sensible query limit to prevent database scaling cost blowups (Issue 6)
+    
+    // 1. Fetch standard recent bookings
     const snapshot = await db.collection('bookings')
       .orderBy('startDate', 'desc')
       .limit(200)
       .get();
 
-    // Batch fetch users in a single roundtrip to solve N+1 reads (Issue 5)
-    const userIds = Array.from(new Set(snapshot.docs.map(doc => doc.data().userId).filter(Boolean)));
+    const docMap = new Map<string, any>();
+    snapshot.docs.forEach((d) => docMap.set(d.id, d));
+
+    // 2. If a specific booking ID is requested, make sure it is fetched
+    if (targetId && !docMap.has(targetId)) {
+      try {
+        const directDoc = await db.collection('bookings').doc(targetId).get();
+        if (directDoc.exists) {
+          docMap.set(directDoc.id, directDoc);
+        }
+      } catch (e) {
+        console.error('Direct booking fetch failed:', e);
+      }
+    }
+
+    // 3. If a target vehicleReg/search is requested, also query by vehicleReg directly
+    if (targetSearch && targetSearch.trim().length >= 2) {
+      const qClean = targetSearch.trim();
+      const qUpper = qClean.toUpperCase();
+      const qNorm = qClean.replace(/[\s-]/g, '').toUpperCase();
+
+      const queries = [
+        db.collection('bookings').where('vehicleReg', '==', qClean).limit(10).get(),
+        db.collection('bookings').where('vehicleReg', '==', qUpper).limit(10).get(),
+      ];
+      if (qNorm !== qUpper) {
+        queries.push(db.collection('bookings').where('vehicleReg', '==', qNorm).limit(10).get());
+      }
+
+      const results = await Promise.all(queries.map(q => q.catch(() => ({ docs: [] }))));
+      results.forEach(res => {
+        res.docs.forEach((d: any) => {
+          if (!docMap.has(d.id)) {
+            docMap.set(d.id, d);
+          }
+        });
+      });
+    }
+
+    const allDocs = Array.from(docMap.values());
+
+    // Batch fetch users in a single roundtrip to solve N+1 reads
+    const userIds = Array.from(new Set(allDocs.map(doc => doc.data()?.userId).filter(Boolean)));
     const userMap = new Map<string, any>();
     
     if (userIds.length > 0) {
@@ -32,19 +78,31 @@ export async function GET() {
       });
     }
 
-    let bookings = snapshot.docs.map((doc) => {
+    let bookings = allDocs.map((doc) => {
       const data = doc.data();
-      const userData = userMap.get(data.userId);
+      const userData = userMap.get(data?.userId);
       return {
         id: doc.id,
         ...data,
         userName: userData?.name || 'Unknown',
         userPhone: userData?.phoneNumber || '',
-        community: userData?.community || '',
+        community: userData?.community || data?.community || '',
       };
     });
 
-    // Enforce role-based access control based on assignedCommunities (Issue 4)
+    // If targetId or targetSearch was requested, put matches at the very top of the array
+    if (targetId || targetSearch) {
+      const normSearch = (targetSearch || '').replace(/[\s-]/g, '').toLowerCase();
+      bookings.sort((a, b) => {
+        const aIsTarget = (targetId && a.id === targetId) || (normSearch && (a.vehicleReg || '').replace(/[\s-]/g, '').toLowerCase() === normSearch);
+        const bIsTarget = (targetId && b.id === targetId) || (normSearch && (b.vehicleReg || '').replace(/[\s-]/g, '').toLowerCase() === normSearch);
+        if (aIsTarget && !bIsTarget) return -1;
+        if (!aIsTarget && bIsTarget) return 1;
+        return (b.startDate || 0) - (a.startDate || 0);
+      });
+    }
+
+    // Enforce role-based access control based on assignedCommunities
     if (!enforceSuperAdmin(admin)) {
       bookings = bookings.filter((b: any) => admin.assignedCommunities.includes(b.community));
     }

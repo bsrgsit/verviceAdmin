@@ -207,7 +207,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                       </div>
                     </div>
                     <span className="text-[11px] text-blue-700 font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                      View Schedule <ArrowRight className="w-3.5 h-3.5" />
+                      {v.actionText || 'View Booking'} <ArrowRight className="w-3.5 h-3.5" />
                     </span>
                   </button>
                 ))}
