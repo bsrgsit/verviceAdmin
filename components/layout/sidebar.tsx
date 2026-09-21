@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -11,7 +11,6 @@ import {
   Globe,
   Settings,
   X,
-  Car,
   LogOut,
   User,
   ExternalLink,
@@ -76,8 +75,8 @@ export default function Sidebar({
           className="flex items-center gap-3 group"
           onClick={() => setIsMobileOpen?.(false)}
         >
-          <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-sm shadow-emerald-900/20 group-hover:scale-105 transition-transform">
-            <Car className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center p-1 group-hover:scale-105 transition-transform shrink-0">
+            <img src="/logo.png" alt="Vervice" className="w-7 h-7 object-contain" />
           </div>
           <div>
             <h1 className="font-extrabold text-slate-900 text-base tracking-tight leading-tight">Vervice</h1>

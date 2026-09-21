@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Car, Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
+import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
 
 function LoginForm() {
   const router = useRouter();
@@ -47,8 +47,8 @@ function LoginForm() {
       <div className="premium-card p-8 bg-white">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mb-4 shadow-md shadow-emerald-950/10">
-            <Car className="w-8 h-8 text-white" />
+          <div className="w-16 h-16 bg-white border border-slate-200/90 rounded-2xl flex items-center justify-center mb-4 shadow-sm p-2.5">
+            <img src="/logo.png" alt="Vervice Logo" className="w-11 h-11 object-contain" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Vervice Admin</h1>
           <p className="text-slate-500 text-sm mt-1 font-medium">Sign in to your admin account</p>
